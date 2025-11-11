@@ -17,6 +17,6 @@
   },
   "description": "Backend API for Brand Guidelines Checker Figma Plugin",
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   }
 }
