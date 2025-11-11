@@ -145,7 +145,7 @@ Respond ONLY with valid JSON (no markdown, no code blocks, no explanation) with 
     console.log('Model: claude-3-5-sonnet-20241022');
     
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-opus-4-1-20250805',
       max_tokens: 2000,
       messages: [
         {
@@ -263,7 +263,7 @@ app.post('/api/chat', async (req, res) => {
     console.log('🤖 Calling Anthropic Chat API...');
 
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-opus-4-1-20250805',
       max_tokens: 1500,
       messages: messages
     });
