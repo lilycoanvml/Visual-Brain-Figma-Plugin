@@ -13,6 +13,15 @@ figma.ui.onmessage = async (msg) => {
     }
   }
 
+  if (msg.type === 'save-api-endpoint') {
+    try {
+      await figma.clientStorage.setAsync('api-endpoint', msg.endpoint);
+      console.log('API endpoint saved');
+    } catch (error) {
+      console.error('Error saving API endpoint:', error);
+    }
+  }
+
   if (msg.type === 'load-api-key') {
     try {
       const apiKey = await figma.clientStorage.getAsync('anthropic-api-key');
@@ -25,6 +34,22 @@ figma.ui.onmessage = async (msg) => {
       figma.ui.postMessage({ 
         type: 'api-key-loaded', 
         apiKey: null 
+      });
+    }
+  }
+
+  if (msg.type === 'load-api-endpoint') {
+    try {
+      const endpoint = await figma.clientStorage.getAsync('api-endpoint');
+      figma.ui.postMessage({ 
+        type: 'api-endpoint-loaded', 
+        endpoint: endpoint 
+      });
+    } catch (error) {
+      console.error('Error loading API endpoint:', error);
+      figma.ui.postMessage({ 
+        type: 'api-endpoint-loaded', 
+        endpoint: null 
       });
     }
   }

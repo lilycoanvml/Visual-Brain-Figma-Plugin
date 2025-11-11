@@ -4,9 +4,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "node index.js"
   },
-  "keywords": [],
+  "keywords": ["brand", "guidelines", "figma", "api"],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -14,5 +15,8 @@
     "cors": "^2.8.5",
     "@anthropic-ai/sdk": "^0.20.0"
   },
-  "description": "Backend API for Brand Guidelines Checker Figma Plugin"
+  "description": "Backend API for Brand Guidelines Checker Figma Plugin",
+  "engines": {
+    "node": "18.x"
+  }
 }

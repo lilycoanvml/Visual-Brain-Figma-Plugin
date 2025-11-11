@@ -400,9 +400,19 @@
         </label>
       </div>
 
-      <div id="api-key-section" style="margin-top: 12px; display: none;">
+      <div id="api-endpoint-section" style="margin-top: 12px;">
         <label style="display: block; font-size: 11px; font-weight: 500; color: #666; margin-bottom: 4px;">
-          Anthropic API Key (Optional - for AI analysis)
+          Backend API URL (Required)
+        </label>
+        <input type="text" id="api-endpoint-input" placeholder="https://your-backend.vercel.app" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px;">
+        <p style="font-size: 9px; color: #999; margin: 4px 0 0 0;">
+          Enter your backend API endpoint (e.g., https://my-app.vercel.app)
+        </p>
+      </div>
+
+      <div id="api-key-section" style="margin-top: 12px;">
+        <label style="display: block; font-size: 11px; font-weight: 500; color: #666; margin-bottom: 4px;">
+          Anthropic API Key (Required for AI features)
         </label>
         <input type="password" id="api-key-input" placeholder="sk-ant-..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px;">
         <p style="font-size: 9px; color: #999; margin: 4px 0 0 0;">
@@ -432,11 +442,15 @@
 
   <!-- Analyze Tab -->
   <div id="analyze-tab" class="tab-content">
-    <!-- AI Chat Section - Now at the top -->
     <div class="section" id="ai-chat-section">
-      <h3>💬 AI Brand Assistant</h3>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <h3 style="margin: 0;">💬 AI Brand Assistant</h3>
+        <div id="chat-status-badge" style="padding: 4px 12px; background: #e0e0e0; color: #666; border-radius: 12px; font-size: 10px; font-weight: 600;">
+          ⏳ Waiting for guidelines...
+        </div>
+      </div>
       <p style="font-size: 11px; color: #666; margin-bottom: 12px;">
-        <span id="chat-status-text">Upload brand guidelines with AI analysis to start chatting...</span>
+        <span id="chat-status-text">⚠️ AI chat is currently unavailable in Figma plugins due to CORS restrictions. Use the pattern-based analysis features below!</span>
       </p>
       
       <div id="chat-messages" style="background: #f8f9fa; border-radius: 8px; padding: 12px; min-height: 250px; max-height: 400px; overflow-y: auto; margin-bottom: 12px;">
@@ -459,8 +473,10 @@
           type="text" 
           id="chat-input" 
           placeholder="Ask about your brand, guidelines, or get design feedback..."
-          style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px;"
+          style="flex: 1; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 12px; transition: border-color 0.2s;"
           onkeypress="if(event.key === 'Enter') sendChatMessage()"
+          onfocus="this.style.borderColor='#667eea'"
+          onblur="this.style.borderColor='#ddd'"
           disabled
         >
         <button class="button" onclick="sendChatMessage()" id="send-chat-btn" style="width: auto; padding: 10px 20px;" disabled>
@@ -490,11 +506,10 @@
       </div>
     </div>
 
-    <!-- Figma Analysis Section - Moved below chat -->
     <div class="section">
       <h3>🔍 Analyze Figma Selection</h3>
       <p style="font-size: 11px; color: #666; margin-bottom: 12px;">
-        Select elements in Figma to check them against your brand guidelines. The AI will analyze them and you can discuss the results in the chat above.
+        Select elements in Figma to check them against your brand guidelines.
       </p>
       <button class="button" id="analyze-button">🔍 Analyze Selected Elements</button>
       <p style="font-size: 10px; color: #999; margin-top: 8px; text-align: center;">
@@ -506,7 +521,6 @@
   </div>
 
   <script>
-    // Set PDF.js worker
     if (typeof pdfjsLib !== 'undefined') {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
@@ -518,7 +532,6 @@
     let chatHistory = [];
     let currentAnalysisData = null;
 
-    // Initialize
     window.onload = () => {
       setupDragAndDrop();
       setupTabs();
@@ -530,21 +543,22 @@
     function setupAPIKeySection() {
       const aiCheckbox = document.getElementById('ai-analysis');
       const apiKeySection = document.getElementById('api-key-section');
+      const apiEndpointSection = document.getElementById('api-endpoint-section');
       
       aiCheckbox.addEventListener('change', (e) => {
         apiKeySection.style.display = e.target.checked ? 'block' : 'none';
+        apiEndpointSection.style.display = e.target.checked ? 'block' : 'none';
       });
       
-      // Request saved API key from Figma storage
       parent.postMessage({ pluginMessage: { type: 'load-api-key' } }, '*');
+      parent.postMessage({ pluginMessage: { type: 'load-api-endpoint' } }, '*');
       
-      // Show section if AI analysis is checked
       if (aiCheckbox.checked) {
         apiKeySection.style.display = 'block';
+        apiEndpointSection.style.display = 'block';
       }
     }
 
-    // Handle messages from Figma plugin
     window.onmessage = (event) => {
       const msg = event.data.pluginMessage;
       if (!msg) return;
@@ -553,8 +567,6 @@
         if (msg.guidelines) {
           parsedGuidelines = msg.guidelines;
           displayGuidelinesPreview(msg.guidelines);
-          
-          // Enable chat if AI understanding is available
           if (msg.guidelines.aiUnderstanding) {
             enableChat();
           }
@@ -564,6 +576,12 @@
       if (msg.type === 'api-key-loaded') {
         if (msg.apiKey) {
           document.getElementById('api-key-input').value = msg.apiKey;
+        }
+      }
+
+      if (msg.type === 'api-endpoint-loaded') {
+        if (msg.endpoint) {
+          document.getElementById('api-endpoint-input').value = msg.endpoint;
         }
       }
       
@@ -576,7 +594,6 @@
         btn.disabled = false;
         btn.innerHTML = '🔍 Parse Guidelines';
         
-        // Enable chat if AI understanding is available
         if (msg.guidelines.aiUnderstanding) {
           enableChat();
           showMessage('AI Brand Assistant is now ready! Go to the Analyze tab to chat.', 'success');
@@ -587,7 +604,6 @@
         currentAnalysisData = msg.analysis;
         displayAnalysis(msg.analysis);
         
-        // Add analysis summary to chat
         if (parsedGuidelines && parsedGuidelines.aiUnderstanding) {
           const summary = `📊 Analysis complete for "${msg.analysis.name}". Found ${msg.analysis.violations.length} issues and ${msg.analysis.goodPractices.length} good practices. Feel free to ask me about the results!`;
           addChatMessage('system', summary);
@@ -603,7 +619,6 @@
       }
     };
 
-    // Setup tab switching
     function setupTabs() {
       const tabs = document.querySelectorAll('.tab');
       tabs.forEach(tab => {
@@ -622,7 +637,6 @@
       document.getElementById(tabName + '-tab').classList.add('active');
     }
 
-    // Setup button listeners
     function setupButtons() {
       document.getElementById('parse-button').addEventListener('click', parseGuidelines);
       document.getElementById('analyze-button').addEventListener('click', analyzeSelection);
@@ -632,10 +646,8 @@
       });
     }
 
-    // Drag and drop setup
     function setupDragAndDrop() {
       const dropZone = document.getElementById('drop-zone');
-
       ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, preventDefaults, false);
       });
@@ -663,7 +675,6 @@
     function handleDrop(e) {
       const dt = e.dataTransfer;
       const files = dt.files;
-      
       if (files.length > 0) {
         handleFile(files[0]);
       }
@@ -677,7 +688,7 @@
     }
 
     async function handleFile(file) {
-      const maxSize = 50 * 1024 * 1024; // 50MB
+      const maxSize = 50 * 1024 * 1024;
       const allowedTypes = ['.txt', '.pdf'];
       const fileExt = '.' + file.name.split('.').pop().toLowerCase();
 
@@ -780,18 +791,15 @@
             viewport: viewport
           }).promise;
           
-          // Extract colors from canvas
           const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
           const pixels = imageData.data;
           
-          // Sample colors (every 50th pixel to avoid too much data)
           for (let i = 0; i < pixels.length; i += 200) {
             const r = pixels[i];
             const g = pixels[i + 1];
             const b = pixels[i + 2];
             const a = pixels[i + 3];
             
-            // Skip transparent or white/black pixels
             if (a > 200 && !(r > 240 && g > 240 && b > 240) && !(r < 15 && g < 15 && b < 15)) {
               const hex = rgbToHex(r, g, b);
               extractedColors.add(hex);
@@ -916,11 +924,9 @@
           }
         }
         
-        // AI Analysis
         if (aiAnalysis) {
           const apiKey = document.getElementById('api-key-input').value.trim();
           if (apiKey) {
-            // Save API key to Figma storage
             parent.postMessage({ 
               pluginMessage: { 
                 type: 'save-api-key',
@@ -962,140 +968,49 @@
     }
 
     async function analyzeWithAI(content, imageDataUrls, apiKey) {
-      const prompt = `You are a brand design expert analyzing brand guidelines. Read and deeply understand this brand guidelines document.
-
-DOCUMENT CONTENT:
-${content.substring(0, 8000)}
-
-Please analyze and provide a comprehensive understanding including:
-
-1. **Brand Personality**: What is the overall feeling, tone, and personality of this brand? (e.g., playful, professional, luxurious, minimal, bold)
-
-2. **Visual Style**: Describe the visual aesthetic and design direction. What emotions should designs evoke?
-
-3. **Core Values**: What values and principles does this brand stand for?
-
-4. **Target Audience**: Who is this brand designed for? What demographic and psychographic characteristics?
-
-5. **Color Psychology**: Beyond just hex codes, what do the colors represent? What feelings should they evoke?
-
-6. **Typography Character**: What personality do the fonts convey? How should text feel?
-
-7. **Imagery Style**: What kind of images align with this brand? (photography style, illustration style, etc.)
-
-8. **Design Dos and Don'ts**: Key principles for what should and shouldn't be done
-
-9. **Brand Essence**: In one sentence, what is the essence of this brand?
-
-Respond in JSON format with these exact keys: brandPersonality, visualStyle, coreValues, targetAudience, colorPsychology, typographyCharacter, imageryStyle, designPrinciples, brandEssence`;
-
-      const messages = [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt }
-          ]
-        }
-      ];
-
-      // Add images if available
-      if (imageDataUrls && imageDataUrls.length > 0) {
-        imageDataUrls.forEach(dataUrl => {
-          const base64Data = dataUrl.split(',')[1];
-          messages[0].content.push({
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: 'image/png',
-              data: base64Data
-            }
-          });
-        });
+      let endpoint = document.getElementById('api-endpoint-input').value.trim();
+      
+      if (!endpoint || endpoint === 'https://your-backend.vercel.app' || endpoint.includes('YOUR-API-URL')) {
+        throw new Error('API endpoint URL is required. Please enter your backend API URL in the "Backend API URL" field.');
       }
+      
+      if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+        endpoint = 'https://' + endpoint;
+      }
+      
+      endpoint = endpoint.replace(/\/$/, '');
+      
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'save-api-endpoint',
+          endpoint: endpoint
+        } 
+      }, '*');
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(`${endpoint}/api/analyze-guidelines`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 2000,
-          messages: messages
+          content: content,
+          images: imageDataUrls,
+          apiKey: apiKey
         })
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error('API request failed: ' + error);
+        const error = await response.json();
+        throw new Error(error.message || 'API request failed');
       }
 
       const data = await response.json();
-      const textContent = data.content.find(c => c.type === 'text');
       
-      if (!textContent) {
-        throw new Error('No text response from AI');
+      if (!data.success) {
+        throw new Error(data.error || 'Analysis failed');
       }
 
-      // Extract JSON from response
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-      
-      throw new Error('Could not parse AI response as JSON');
-    }
-
-    async function analyzeSelectionWithAI(selectionData, guidelines, apiKey) {
-      const prompt = `You are a brand design expert. Analyze this Figma design against the brand guidelines.
-
-BRAND UNDERSTANDING:
-${JSON.stringify(guidelines.aiUnderstanding, null, 2)}
-
-DESIGN BEING ANALYZED:
-${JSON.stringify(selectionData, null, 2)}
-
-Evaluate:
-1. Does the design match the brand personality and visual style?
-2. Are colors used appropriately for the brand message?
-3. Does typography align with brand character?
-4. Overall brand alignment score (0-100)
-5. Specific feedback on what works and what doesn't
-
-Respond in JSON format with: alignmentScore, personalityMatch, colorUsage, typographyAlignment, imageStyle, overallFeedback, specificIssues, recommendations`;
-
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 1500,
-          messages: [{
-            role: 'user',
-            content: prompt
-          }]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('AI analysis failed');
-      }
-
-      const data = await response.json();
-      const textContent = data.content.find(c => c.type === 'text');
-      
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-      
-      return null;
+      return data.data;
     }
 
     function displayGuidelinesPreview(guidelines) {
@@ -1104,7 +1019,6 @@ Respond in JSON format with: alignmentScore, personalityMatch, colorUsage, typog
       
       let html = '';
       
-      // AI Understanding Section
       if (guidelines.aiUnderstanding) {
         const ai = guidelines.aiUnderstanding;
         
@@ -1155,51 +1069,6 @@ Respond in JSON format with: alignmentScore, personalityMatch, colorUsage, typog
         html += '</div>';
       }
       
-      // Document Analysis Section
-      if (guidelines.documentAnalysis) {
-        const da = guidelines.documentAnalysis;
-        
-        html += '<div style="margin-bottom: 16px; padding: 12px; background: white; border-radius: 6px;">';
-        html += '<h4 style="margin: 0 0 8px 0; font-family: Inter, sans-serif;">📊 Guidelines Quality Score</h4>';
-        
-        // Score bar
-        const scoreColor = da.score >= 80 ? '#28a745' : da.score >= 60 ? '#ffc107' : '#dc3545';
-        html += '<div style="background: #e0e0e0; height: 24px; border-radius: 12px; overflow: hidden; margin-bottom: 12px;">';
-        html += '<div style="background: ' + scoreColor + '; height: 100%; width: ' + da.score + '%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 11px; font-family: Inter, sans-serif;">';
-        html += da.score + '%';
-        html += '</div></div>';
-        
-        // Strengths
-        if (da.strengths.length > 0) {
-          html += '<div style="margin-bottom: 8px;"><strong style="color: #28a745; font-family: Inter, sans-serif;">✓ Strengths:</strong><ul style="margin: 4px 0 0 0; padding-left: 20px; font-size: 10px;">';
-          da.strengths.forEach(s => {
-            html += '<li>' + escapeHtml(s) + '</li>';
-          });
-          html += '</ul></div>';
-        }
-        
-        // Weaknesses
-        if (da.weaknesses.length > 0) {
-          html += '<div style="margin-bottom: 8px;"><strong style="color: #dc3545; font-family: Inter, sans-serif;">⚠ Gaps:</strong><ul style="margin: 4px 0 0 0; padding-left: 20px; font-size: 10px;">';
-          da.weaknesses.forEach(w => {
-            html += '<li>' + escapeHtml(w) + '</li>';
-          });
-          html += '</ul></div>';
-        }
-        
-        // Recommendations
-        if (da.recommendations.length > 0) {
-          html += '<div><strong style="color: #17a2b8; font-family: Inter, sans-serif;">💡 Recommendations:</strong><ul style="margin: 4px 0 0 0; padding-left: 20px; font-size: 10px;">';
-          da.recommendations.forEach(r => {
-            html += '<li>' + escapeHtml(r) + '</li>';
-          });
-          html += '</ul></div>';
-        }
-        
-        html += '</div>';
-      }
-      
-      // Parsed data (collapsed)
       html += '<details style="font-family: Courier New, monospace; font-size: 10px; line-height: 1.4;">';
       html += '<summary style="cursor: pointer; font-family: Inter, sans-serif; font-size: 11px; font-weight: 600; padding: 8px; background: #f0f0f0; border-radius: 4px;">📋 View Raw Parsed Data</summary>';
       html += '<pre style="margin: 8px 0 0 0; padding: 12px; background: #f8f9fa; border-radius: 4px; overflow-x: auto;">';
@@ -1217,49 +1086,42 @@ Respond in JSON format with: alignmentScore, personalityMatch, colorUsage, typog
     }
 
     function enableChat() {
-      // Remove welcome message
       const welcome = document.getElementById('chat-welcome');
       if (welcome) {
         welcome.remove();
       }
       
-      // Check if API key is available
       const apiKeyInput = document.getElementById('api-key-input');
       const hasApiKey = apiKeyInput && apiKeyInput.value.trim().length > 0;
       
+      document.getElementById('chat-input').disabled = false;
+      document.getElementById('send-chat-btn').disabled = false;
+      
+      const statusBadge = document.getElementById('chat-status-badge');
+      
       if (hasApiKey) {
-        // Enable inputs
-        document.getElementById('chat-input').disabled = false;
-        document.getElementById('send-chat-btn').disabled = false;
-        
-        // Update status text
         document.getElementById('chat-status-text').innerHTML = '✅ AI Brand Assistant is ready! Ask me anything about your brand guidelines or designs.';
+        statusBadge.style.background = '#d4edda';
+        statusBadge.style.color = '#155724';
+        statusBadge.textContent = '✓ Ready';
         
-        // Show quick questions
-        document.getElementById('quick-questions').style.display = 'block';
-        
-        // Add welcome message if chat is empty
         if (chatHistory.length === 0) {
           const brandName = parsedGuidelines.aiUnderstanding?.brandEssence || 'your brand';
           addChatMessage('ai', `Hi! 👋 I've learned all about ${brandName}. I can help you:\n\n• Understand your brand guidelines\n• Validate design decisions\n• Explore creative ideas\n• Check Figma designs for compliance\n• Answer any brand-related questions\n\nWhat would you like to know?`);
         }
       } else {
-        // Enable inputs but show warning on first use
-        document.getElementById('chat-input').disabled = false;
-        document.getElementById('send-chat-btn').disabled = false;
+        document.getElementById('chat-status-text').innerHTML = '⚠️ Chat is enabled, but add your API key in "Upload Guidelines" tab for full functionality.';
+        statusBadge.style.background = '#fff3cd';
+        statusBadge.style.color = '#856404';
+        statusBadge.textContent = '⚠️ API Key Needed';
         
-        // Update status text with instruction
-        document.getElementById('chat-status-text').innerHTML = '⚠️ AI is ready, but you need to add your API key. Type a message to see instructions, or add the key in Upload Guidelines tab.';
-        
-        // Show quick questions
-        document.getElementById('quick-questions').style.display = 'block';
-        
-        // Add welcome message
         if (chatHistory.length === 0) {
           const brandName = parsedGuidelines.aiUnderstanding?.brandEssence || 'your brand';
-          addChatMessage('ai', `Hi! 👋 I've learned all about ${brandName}.\n\nTo start chatting, please add your Anthropic API key in the "Upload Guidelines" tab, or I can guide you through getting one!\n\nWhat would you like to do?`);
+          addChatMessage('ai', `Hi! 👋 I've learned all about ${brandName}.\n\n⚠️ To start chatting, please add your Anthropic API key in the "Upload Guidelines" tab.\n\nGet a free API key at: console.anthropic.com\n\nOnce added, come back and ask me anything!`);
         }
       }
+      
+      document.getElementById('quick-questions').style.display = 'block';
     }
 
     async function sendChatMessage() {
@@ -1273,7 +1135,6 @@ Respond in JSON format with: alignmentScore, personalityMatch, colorUsage, typog
         return;
       }
       
-      // Get API key
       const apiKeyInput = document.getElementById('api-key-input');
       const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
       
@@ -1281,33 +1142,26 @@ Respond in JSON format with: alignmentScore, personalityMatch, colorUsage, typog
         input.value = '';
         addChatMessage('user', message);
         addChatMessage('system', '🔑 To use AI chat, please add your Anthropic API key:\n\n1. Go to the "Upload Guidelines" tab\n2. Scroll to the API key field\n3. Enter your key (get one free at console.anthropic.com)\n4. Come back here and ask again!\n\nYour message has been saved.');
-        
-        // Save the message for retry
         input.value = message;
         return;
       }
       
-      // Add user message
       addChatMessage('user', message);
       input.value = '';
       
-      // Show loading
       const loadingId = 'loading-' + Date.now();
-      addChatMessage('ai', '<div class="chat-loading"><span></span><span></span><span></span></div>', loadingId);
+      addChatMessage('ai', '<div style="display:flex;gap:4px;"><div style="width:8px;height:8px;background:#667eea;border-radius:50%;animation:bounce 1.4s infinite;"></div><div style="width:8px;height:8px;background:#667eea;border-radius:50%;animation:bounce 1.4s infinite;animation-delay:0.2s;"></div><div style="width:8px;height:8px;background:#667eea;border-radius:50%;animation:bounce 1.4s infinite;animation-delay:0.4s;"></div></div><style>@keyframes bounce{0%,80%,100%{transform:translateY(0);}40%{transform:translateY(-10px);}}</style>', loadingId);
       
       try {
         const response = await chatWithAI(message, apiKey);
         
-        // Remove loading
         const loadingMsg = document.getElementById(loadingId);
         if (loadingMsg) loadingMsg.remove();
         
-        // Add AI response
         addChatMessage('ai', response);
       } catch (error) {
         console.error('Chat error:', error);
         
-        // Remove loading
         const loadingMsg = document.getElementById(loadingId);
         if (loadingMsg) loadingMsg.remove();
         
@@ -1329,25 +1183,33 @@ Respond in JSON format with: alignmentScore, personalityMatch, colorUsage, typog
       
       const msgDiv = document.createElement('div');
       msgDiv.className = 'chat-message ' + type;
-      if (id) msgDiv.id = id;
+      msgDiv.style.padding = '12px';
+      msgDiv.style.marginBottom = '8px';
+      msgDiv.style.borderRadius = '6px';
+      msgDiv.style.fontSize = '11px';
+      msgDiv.style.lineHeight = '1.6';
       
-      if (message.includes('<div class="chat-loading">')) {
-        msgDiv.innerHTML = message;
+      if (type === 'user') {
+        msgDiv.style.background = '#667eea';
+        msgDiv.style.color = 'white';
+        msgDiv.style.marginLeft = '20px';
+        msgDiv.style.textAlign = 'right';
+      } else if (type === 'ai') {
+        msgDiv.style.background = '#f0f2ff';
+        msgDiv.style.color = '#333';
+        msgDiv.style.marginRight = '20px';
       } else {
-        // Format message with line breaks
-        const formattedMessage = message.split('\n').map(line => {
-          if (line.trim().startsWith('•') || line.trim().startsWith('-')) {
-            return '<div style="margin-left: 12px;">' + escapeHtml(line) + '</div>';
-          }
-          return escapeHtml(line);
-        }).join('<br>');
-        msgDiv.innerHTML = formattedMessage;
+        msgDiv.style.background = '#fff3cd';
+        msgDiv.style.color = '#856404';
       }
       
+      if (id) msgDiv.id = id;
+      
+      msgDiv.innerHTML = message;
       container.appendChild(msgDiv);
       container.scrollTop = container.scrollHeight;
       
-      if (type !== 'system' && !message.includes('chat-loading')) {
+      if (type !== 'system' && !message.includes('animation:bounce')) {
         chatHistory.push({ 
           role: type === 'user' ? 'user' : 'assistant', 
           content: message 
@@ -1356,7 +1218,18 @@ Respond in JSON format with: alignmentScore, personalityMatch, colorUsage, typog
     }
 
     async function chatWithAI(userMessage, apiKey) {
-      // Build comprehensive context
+      let endpoint = document.getElementById('api-endpoint-input').value.trim();
+      
+      if (!endpoint || endpoint === 'https://your-backend.vercel.app' || endpoint.includes('YOUR-API-URL')) {
+        throw new Error('API endpoint URL is required. Please enter your backend API URL in the "Backend API URL" field.');
+      }
+      
+      if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+        endpoint = 'https://' + endpoint;
+      }
+      
+      endpoint = endpoint.replace(/\/$/, '');
+
       let contextPrompt = `You are an expert brand design consultant with deep understanding of the user's brand. You're having a conversation to help them understand and apply their brand guidelines.
 
 BRAND GUIDELINES YOU'VE LEARNED:
@@ -1369,32 +1242,9 @@ Visual Style: ${parsedGuidelines.aiUnderstanding.visualStyle}
 
 Target Audience: ${parsedGuidelines.aiUnderstanding.targetAudience}
 
-Core Values: ${parsedGuidelines.aiUnderstanding.coreValues || 'Not specified'}
-
 Color Psychology: ${parsedGuidelines.aiUnderstanding.colorPsychology}
 
-Typography Character: ${parsedGuidelines.aiUnderstanding.typographyCharacter}
-
 Imagery Style: ${parsedGuidelines.aiUnderstanding.imageryStyle}
-
-Design Principles: ${parsedGuidelines.aiUnderstanding.designPrinciples || 'Not specified'}
-
-TECHNICAL SPECIFICATIONS:
-- Colors: ${parsedGuidelines.colors.map(c => c.name + ' (' + c.hex + ')').join(', ')}
-- Fonts: ${parsedGuidelines.typography.fonts.map(f => f.family).join(', ')}
-- Font Sizes: ${parsedGuidelines.typography.sizes.join('px, ')}px
-- Spacing Scale: ${parsedGuidelines.spacing.scale.join(', ')}${parsedGuidelines.spacing.unit}`;
-
-      if (currentAnalysisData) {
-        contextPrompt += `
-
-CURRENT FIGMA DESIGN ANALYSIS:
-Element: ${currentAnalysisData.name} (${currentAnalysisData.elementType})
-Issues: ${currentAnalysisData.violations.map(v => v.message).join('; ')}
-Working Well: ${currentAnalysisData.goodPractices.join('; ')}`;
-      }
-
-      contextPrompt += `
 
 User's question: ${userMessage}
 
@@ -1410,33 +1260,29 @@ Please provide helpful, specific advice that references the brand personality, v
         content: contextPrompt
       });
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(`${endpoint}/api/chat`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 1500,
-          messages: messages
+          messages: messages,
+          apiKey: apiKey
         })
       });
 
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error('API request failed: ' + error);
+        const error = await response.json();
+        throw new Error(error.message || 'Chat request failed');
       }
 
       const data = await response.json();
-      const textContent = data.content.find(c => c.type === 'text');
       
-      if (!textContent) {
-        throw new Error('No text response from AI');
+      if (!data.success) {
+        throw new Error(data.error || 'Chat failed');
       }
 
-      return textContent.text;
+      return data.data;
     }
 
     function displayAnalysis(analysis) {
@@ -1444,7 +1290,6 @@ Please provide helpful, specific advice that references the brand personality, v
       
       let html = '<div class="analysis-result">';
       
-      // Header with selection count
       if (analysis.selectionCount && analysis.selectionCount > 1) {
         html += `<div class="section">
           <h3>Section Analysis <span class="stat-badge">${analysis.selectionCount} elements</span></h3>
@@ -1457,90 +1302,6 @@ Please provide helpful, specific advice that references the brand personality, v
         </div>`;
       }
 
-      // AI Chat Prompt Card (if AI is available)
-      if (parsedGuidelines && parsedGuidelines.aiUnderstanding) {
-        html += '<div class="analysis-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">';
-        html += '<h4 style="color: white; margin-bottom: 8px;">💬 Want personalized feedback?</h4>';
-        html += '<p style="margin: 0 0 12px 0; font-size: 11px; line-height: 1.6; opacity: 0.95;">Scroll down to chat with AI about your design! Ask for specific improvements, alternative ideas, or brand alignment feedback.</p>';
-        html += '<div style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 6px; font-size: 10px; font-style: italic;">💡 Try: "How can I make this more on-brand?" or "Suggest better color combinations"</div>';
-        html += '</div>';
-      }
-
-      // Intelligent Insights Section
-      if (analysis.insights) {
-        const insights = analysis.insights;
-        
-        html += '<div class="analysis-card" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea;">';
-        html += '<h4 style="color: #667eea;">🧠 Intelligent Analysis</h4>';
-        
-        // Overall Assessment
-        if (insights.overall) {
-          html += '<div style="padding: 10px; background: white; border-radius: 6px; margin-bottom: 10px;">';
-          html += '<strong style="display: block; margin-bottom: 4px; color: #333;">Overall Assessment:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.6;">' + escapeHtml(insights.overall) + '</p>';
-          html += '</div>';
-        }
-        
-        // Brand Alignment (if AI enhanced)
-        if (insights.brandAlignment) {
-          html += '<div style="padding: 10px; background: #f0f2ff; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid #667eea;">';
-          html += '<strong style="display: block; margin-bottom: 4px; color: #667eea;">🎯 Brand Alignment:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.6;">' + escapeHtml(insights.brandAlignment) + '</p>';
-          html += '</div>';
-        }
-        
-        // Color Consistency
-        if (insights.colorConsistency) {
-          html += '<div style="padding: 10px; background: white; border-radius: 6px; margin-bottom: 10px;">';
-          html += '<strong style="display: block; margin-bottom: 4px; color: #333;">🎨 Color Consistency:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.6;">' + escapeHtml(insights.colorConsistency) + '</p>';
-          html += '</div>';
-        }
-        
-        // Typography Consistency
-        if (insights.typographyConsistency) {
-          html += '<div style="padding: 10px; background: white; border-radius: 6px; margin-bottom: 10px;">';
-          html += '<strong style="display: block; margin-bottom: 4px; color: #333;">✍️ Typography:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.6;">' + escapeHtml(insights.typographyConsistency) + '</p>';
-          html += '</div>';
-        }
-        
-        // Design System
-        if (insights.designSystem) {
-          html += '<div style="padding: 10px; background: white; border-radius: 6px; margin-bottom: 10px;">';
-          html += '<strong style="display: block; margin-bottom: 4px; color: #333;">🎯 Design System:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.6;">' + escapeHtml(insights.designSystem) + '</p>';
-          html += '</div>';
-        }
-        
-        // Priority Improvements
-        if (insights.improvements && insights.improvements.length > 0) {
-          html += '<div style="padding: 10px; background: #fff9e6; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid #ffc107;">';
-          html += '<strong style="display: block; margin-bottom: 6px; color: #333;">🔧 Action Items:</strong>';
-          html += '<ol style="margin: 0; padding-left: 20px; font-size: 11px; line-height: 1.6;">';
-          insights.improvements.forEach(imp => {
-            const isPriority = imp.includes('PRIORITY') || imp.includes('URGENT');
-            const style = isPriority ? 'font-weight: 600; color: #dc3545;' : '';
-            html += '<li style="' + style + '">' + escapeHtml(imp) + '</li>';
-          });
-          html += '</ol></div>';
-        }
-        
-        // Best Practices
-        if (insights.bestPractices && insights.bestPractices.length > 0) {
-          html += '<div style="padding: 10px; background: #d4edda; border-radius: 6px; border-left: 3px solid #28a745;">';
-          html += '<strong style="display: block; margin-bottom: 6px; color: #333;">💚 Pro Tips:</strong>';
-          html += '<ul style="margin: 0; padding-left: 20px; font-size: 11px; line-height: 1.6;">';
-          insights.bestPractices.forEach(tip => {
-            html += '<li>' + escapeHtml(tip) + '</li>';
-          });
-          html += '</ul></div>';
-        }
-        
-        html += '</div>';
-      }
-
-      // Violations
       if (analysis.violations && analysis.violations.length > 0) {
         html += '<div class="analysis-card">';
         html += '<h4>⚠️ Issues Found <span class="stat-badge" style="background: #dc3545;">' + analysis.violations.length + '</span></h4>';
@@ -1554,7 +1315,6 @@ Please provide helpful, specific advice that references the brand personality, v
         html += '</ul></div>';
       }
 
-      // Good practices
       if (analysis.goodPractices && analysis.goodPractices.length > 0) {
         html += '<div class="analysis-card">';
         html += '<h4>✅ What\'s Working Well <span class="stat-badge" style="background: #28a745;">' + analysis.goodPractices.length + '</span></h4>';
@@ -1565,7 +1325,6 @@ Please provide helpful, specific advice that references the brand personality, v
         html += '</ul></div>';
       }
 
-      // Suggestions
       if (analysis.suggestions && analysis.suggestions.length > 0) {
         html += '<div class="analysis-card">';
         html += '<h4>💡 Suggestions</h4>';
@@ -1579,7 +1338,6 @@ Please provide helpful, specific advice that references the brand personality, v
       html += '</div>';
       container.innerHTML = html;
       
-      // Scroll to results
       container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
