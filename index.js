@@ -142,7 +142,7 @@ Respond ONLY with valid JSON (no markdown, no code blocks, no explanation) with 
     }
 
     console.log('🤖 Calling Anthropic API with', messageContent.length, 'content blocks...');
-    console.log('Model: claude-3-5-sonnet-20241022');
+    console.log('Model: claude-opus-4-1-2025080');
     
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-1-20250805',
