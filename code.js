@@ -10,8 +10,16 @@ figma.ui.onmessage = async (msg) => {
       
       const { frameData, guidelinesContent, aiUnderstanding, colors, typography, spacing, apiKey, endpoint } = msg;
       
+      // Clean endpoint URL
+      let cleanEndpoint = endpoint.trim();
+      if (cleanEndpoint.endsWith('/')) {
+        cleanEndpoint = cleanEndpoint.slice(0, -1);
+      }
+      
+      console.log('📤 Sending to:', cleanEndpoint + '/api/compliance-grade');
+      
       // Make the API call from the plugin (server-side, not from iframe)
-      fetch(`${endpoint}/api/compliance-grade`, {
+      fetch(`${cleanEndpoint}/api/compliance-grade`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -26,7 +34,10 @@ figma.ui.onmessage = async (msg) => {
           apiKey: apiKey
         })
       })
-      .then(response => response.json())
+      .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+      })
       .then(data => {
         console.log('✅ Grade response received:', data);
         figma.ui.postMessage({
@@ -36,7 +47,7 @@ figma.ui.onmessage = async (msg) => {
         });
       })
       .catch(error => {
-        console.error('❌ Grade API error:', error);
+        console.error('❌ Grade API error:', error.message);
         figma.ui.postMessage({
           type: 'grade-complete',
           data: null,

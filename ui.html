@@ -1192,6 +1192,15 @@
           return;
         }
 
+        // Clean endpoint
+        let cleanEndpoint = endpoint;
+        if (!cleanEndpoint.startsWith('http://') && !cleanEndpoint.startsWith('https://')) {
+          cleanEndpoint = 'https://' + cleanEndpoint;
+        }
+        if (cleanEndpoint.endsWith('/')) {
+          cleanEndpoint = cleanEndpoint.slice(0, -1);
+        }
+
         btn.innerHTML = '🤖 Analyzing against guidelines... <span class="loading-spinner"></span>';
 
         // Send to Figma plugin to make the API call
@@ -1205,7 +1214,7 @@
             typography: parsedGuidelines.typography || {},
             spacing: parsedGuidelines.spacing || {},
             apiKey: apiKey,
-            endpoint: endpoint
+            endpoint: cleanEndpoint
           } 
         }, '*');
 
