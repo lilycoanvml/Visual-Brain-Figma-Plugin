@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const app = express();
 
+// Middleware
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -13,356 +14,167 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// Health check
 app.get('/', (req, res) => {
   res.json({ 
     status: 'Brand Guidelines API is running!',
-    version: '1.0.0',
-    endpoints: ['/api/analyze-guidelines', '/api/chat', '/api/compliance-grade'],
-    timestamp: new Date().toISOString()
+    endpoints: [
+      'GET /',
+      'GET /health',
+      'POST /api/analyze-guidelines',
+      'POST /api/compliance-grade',
+      'POST /api/chat'
+    ]
   });
 });
 
 app.get('/health', (req, res) => {
-  res.json({ healthy: true, timestamp: new Date().toISOString() });
+  res.json({ healthy: true });
 });
 
-// Analyze brand guidelines endpoint
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ test: 'working' });
+});
+
+// Analyze guidelines
 app.post('/api/analyze-guidelines', async (req, res) => {
   try {
-    console.log('📥 Analyze guidelines request received');
-    
-    const { content, images, apiKey } = req.body;
+    console.log('📥 Analyze guidelines');
+    const { content, apiKey } = req.body;
 
-    if (!apiKey) {
-      console.log('❌ Missing API key');
-      return res.status(400).json({ 
-        success: false,
-        error: 'API key is required'
-      });
+    if (!apiKey || !content) {
+      return res.status(400).json({ success: false, error: 'Missing apiKey or content' });
     }
-
-    if (!content) {
-      console.log('❌ Missing content');
-      return res.status(400).json({ 
-        success: false,
-        error: 'Content is required'
-      });
-    }
-
-    console.log('✅ Request validated');
-    console.log('📝 Content length:', content.length);
 
     const anthropic = new Anthropic({ apiKey: apiKey.trim() });
-
-    const prompt = `You are a brand design expert analyzing brand guidelines. Read and deeply understand this brand guidelines document.
-
-DOCUMENT CONTENT:
-${content.substring(0, 8000)}
-
-Please analyze and provide a comprehensive understanding including:
-
-1. **Brand Personality**: What is the overall feeling, tone, and personality of this brand?
-2. **Visual Style**: Describe the visual aesthetic and design direction.
-3. **Core Values**: What values and principles does this brand stand for?
-4. **Target Audience**: Who is this brand designed for?
-5. **Color Psychology**: What do the colors represent and what feelings should they evoke?
-6. **Typography Character**: What personality do the fonts convey?
-7. **Imagery Style**: What kind of images align with this brand?
-8. **Design Principles**: Key dos and don'ts
-9. **Brand Essence**: In one sentence, what is the essence of this brand?
-
-Respond ONLY with valid JSON (no markdown, no explanation) with these exact keys: brandPersonality, visualStyle, coreValues, targetAudience, colorPsychology, typographyCharacter, imageryStyle, designPrinciples, brandEssence`;
-
-    console.log('🤖 Calling Anthropic API...');
-    
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-1-20250805',
       max_tokens: 2000,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
+      messages: [{
+        role: 'user',
+        content: `Analyze this brand document and provide: brandPersonality, visualStyle, coreValues, targetAudience, colorPsychology, typographyCharacter, imageryStyle, designPrinciples, brandEssence. Respond ONLY with JSON.
+
+${content.substring(0, 8000)}`
+      }]
     });
 
-    console.log('✅ API response received');
-
-    const textContent = response.content.find(c => c.type === 'text');
-    
-    if (!textContent) {
-      throw new Error('No text response from Claude');
-    }
-
-    let parsed;
-    try {
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response');
-      }
-      
-      parsed = JSON.parse(jsonMatch[0]);
-      console.log('✅ JSON parsed successfully');
-    } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError.message);
-      
-      parsed = {
-        brandPersonality: 'Unable to parse',
-        visualStyle: textContent.text.substring(0, 200),
-        coreValues: 'Analysis pending',
-        targetAudience: 'Unknown',
-        colorPsychology: 'Unknown',
-        typographyCharacter: 'Unknown',
-        imageryStyle: 'Unknown',
-        designPrinciples: 'See raw response',
-        brandEssence: 'Check guidelines'
-      };
-    }
-
-    res.status(200).json({ 
-      success: true, 
-      data: parsed 
-    });
+    const text = response.content[0]?.text || '';
+    const json = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
+    res.json({ success: true, data: json });
 
   } catch (error) {
-    console.error('❌ Analysis error:', error.message);
-    
-    res.status(500).json({ 
-      success: false,
-      error: 'Analysis failed', 
-      message: error.message
-    });
+    console.error('❌ Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Compliance grade endpoint
+// Compliance grade - THIS IS THE ENDPOINT THAT WAS MISSING
 app.post('/api/compliance-grade', async (req, res) => {
   try {
-    console.log('='.repeat(50));
-    console.log('📊 Compliance grade request received');
-    
-    const { frameData, guidelinesContent, aiUnderstanding, colors, typography, spacing, apiKey } = req.body;
+    console.log('📊 Compliance grade request');
+    const { frameData, guidelinesContent, aiUnderstanding, apiKey } = req.body;
 
-    if (!apiKey) {
+    if (!apiKey || !frameData || !guidelinesContent) {
       return res.status(400).json({ 
-        success: false,
-        error: 'API key is required'
+        success: false, 
+        error: 'Missing required fields' 
       });
     }
-
-    if (!frameData) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Frame data is required'
-      });
-    }
-
-    if (!guidelinesContent) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Guidelines content is required'
-      });
-    }
-
-    console.log('✅ Request validated');
-    console.log('📐 Frame:', frameData.frameName, frameData.frameType);
-    console.log('🎨 Colors detected:', frameData.colors?.length || 0);
-    console.log('✍️ Fonts detected:', frameData.fonts?.length || 0);
 
     const anthropic = new Anthropic({ apiKey: apiKey.trim() });
 
-    const gradePrompt = `You are an expert brand compliance auditor. Grade the following design based on the brand guidelines provided.
+    const prompt = `Grade this Figma design against brand guidelines. Create a compliance report.
 
-BRAND GUIDELINES DOCUMENT:
+BRAND GUIDELINES:
 ${guidelinesContent.substring(0, 6000)}
 
-BRAND UNDERSTANDING:
-${JSON.stringify(aiUnderstanding, null, 2)}
+BRAND PERSONALITY: ${aiUnderstanding?.brandPersonality || 'Unknown'}
 
-DESIGN FRAME DATA:
-Frame Name: ${frameData.frameName}
-Frame Type: ${frameData.frameType}
-Dimensions: ${frameData.dimensions.width}x${frameData.dimensions.height}
+DESIGN:
+- Frame: ${frameData.frameName}
+- Colors: ${frameData.colors?.map(c => c.hex).join(', ') || 'None'}
+- Fonts: ${frameData.fonts?.join(', ') || 'None'}
 
-Detected Colors:
-${frameData.colors?.map(c => `- ${c.hex} (${c.rgb})`).join('\n') || 'None detected'}
+Check these categories:
+1. Accessibility
+2. Color Palette
+3. Typography
+4. Layout
+5. Brand Assets
+6. Imagery
+7. Graphic Elements
+8. Overall Brand Feel
 
-Detected Fonts:
-${frameData.fonts?.join(', ') || 'None detected'}
+For each check provide: category, check, severity (critical/warning/pass), reason
 
-Text Content:
-${frameData.textContent?.map(t => `- "${t.content.substring(0, 100)}" (${t.fontSize}px, ${t.fontFamily})`).join('\n') || 'No text detected'}
-
-Images/Elements:
-${frameData.images?.length || 0} images detected
-
-Create a compliance grade report with these categories:
-1. **Accessibility** - Text contrast, font sizes, readability
-2. **Color Palette** - Color usage consistency, brand alignment
-3. **Typography** - Font families, sizes, hierarchy, weight
-4. **Layout** - Element alignment, spacing, visual hierarchy
-5. **Brand Assets** - Logo usage, brand elements
-6. **Imagery** - Image style, photography aesthetic
-7. **Graphic Elements** - Icons, shapes, visual consistency
-8. **Overall Brand Feel** - Does it feel on-brand?
-
-For EACH check, provide:
-- Category: The category name
-- Check: Specific thing being checked
-- Severity: "critical" (red), "warning" (yellow), or "pass" (green)
-- Reason: Specific feedback on why it passes/fails/warns
-
-CRITICAL = Major brand violation, must fix
-WARNING = Minor issue or potential inconsistency, should address
-PASS = Meets brand requirements perfectly
-
-Be specific and actionable. Reference actual colors, fonts, and measurements detected.
-
-Respond ONLY with valid JSON array. Each object must have: category, check, severity, reason`;
-
-    console.log('🤖 Calling Anthropic for grading...');
-    const startTime = Date.now();
+Respond ONLY with JSON array of objects with: {category, check, severity, reason}`;
 
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-1-20250805',
       max_tokens: 3000,
-      messages: [
-        {
-          role: 'user',
-          content: gradePrompt
-        }
-      ]
+      messages: [{
+        role: 'user',
+        content: prompt
+      }]
     });
 
-    const endTime = Date.now();
-    console.log('⏱️ Grading took', (endTime - startTime) / 1000, 'seconds');
-    console.log('✅ API response received');
-
-    const textContent = response.content.find(c => c.type === 'text');
-    
-    if (!textContent) {
-      throw new Error('No text response from Claude');
-    }
-
-    console.log('📋 Response length:', textContent.text.length);
-
-    let gradeReport;
-    try {
-      const jsonMatch = textContent.text.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new Error('No JSON array found');
-      }
-      gradeReport = JSON.parse(jsonMatch[0]);
-      console.log('✅ Grade report parsed:', gradeReport.length, 'items');
-    } catch (e) {
-      console.error('❌ Parse error:', e.message);
-      throw new Error('Failed to parse grade response: ' + e.message);
-    }
+    const text = response.content[0]?.text || '';
+    const json = JSON.parse(text.match(/\[[\s\S]*\]/)[0]);
 
     const organized = {
-      violations: gradeReport.filter(item => item.severity === 'critical'),
-      warnings: gradeReport.filter(item => item.severity === 'warning'),
-      passed: gradeReport.filter(item => item.severity === 'pass')
+      violations: json.filter(i => i.severity === 'critical'),
+      warnings: json.filter(i => i.severity === 'warning'),
+      passed: json.filter(i => i.severity === 'pass')
     };
 
-    console.log('Summary:');
-    console.log('✓ Passed:', organized.passed.length);
-    console.log('⚠ Warnings:', organized.warnings.length);
-    console.log('✗ Critical:', organized.violations.length);
-    console.log('='.repeat(50));
-
-    res.status(200).json({ 
+    res.json({ 
       success: true, 
-      data: {
-        violations: organized.violations,
-        warnings: organized.warnings,
-        passed: organized.passed,
-        totalChecks: gradeReport.length,
-        timestamp: new Date().toISOString()
-      }
+      data: organized
     });
 
   } catch (error) {
-    console.error('❌ Grade error:', error.message);
-    
-    res.status(500).json({ 
-      success: false,
-      error: 'Grading failed', 
-      message: error.message
-    });
+    console.error('❌ Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Chat endpoint
+// Chat
 app.post('/api/chat', async (req, res) => {
   try {
-    console.log('💬 Chat request received');
-    
+    console.log('💬 Chat request');
     const { messages, apiKey } = req.body;
 
-    if (!apiKey) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'API key is required'
-      });
+    if (!apiKey || !messages) {
+      return res.status(400).json({ success: false, error: 'Missing apiKey or messages' });
     }
-
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Messages array is required'
-      });
-    }
-
-    console.log('✅ Chat request validated');
-    console.log('📨 Messages:', messages.length);
 
     const anthropic = new Anthropic({ apiKey: apiKey.trim() });
-
-    console.log('🤖 Calling Anthropic Chat API...');
-
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-1-20250805',
       max_tokens: 1500,
       messages: messages
     });
 
-    console.log('✅ Chat response received');
-
-    const textContent = response.content.find(c => c.type === 'text');
-    
-    if (!textContent) {
-      throw new Error('No text response from Claude');
-    }
-
-    res.status(200).json({ 
-      success: true, 
-      data: textContent.text 
-    });
+    const text = response.content[0]?.text || '';
+    res.json({ success: true, data: text });
 
   } catch (error) {
-    console.error('❌ Chat error:', error.message);
-    
-    res.status(500).json({ 
-      success: false,
-      error: 'Chat failed', 
-      message: error.message
-    });
+    console.error('❌ Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
+// 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Endpoint not found',
-    path: req.path,
-    method: req.method
-  });
+  res.status(404).json({ error: 'Endpoint not found', path: req.path });
 });
 
+// Export for Vercel
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
-    console.log(`🚀 Brand Guidelines API running on http://localhost:${PORT}`);
+    console.log(`🚀 API running on http://localhost:${PORT}`);
   });
 }
 
