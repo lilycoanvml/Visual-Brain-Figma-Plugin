@@ -129,7 +129,8 @@ figma.ui.onmessage = async (msg) => {
         gradeData.screenshot = `data:image/png;base64,${base64}`;
         console.log('✅ Screenshot captured');
       } catch (e) {
-        console.error('Screenshot error:', e);
+        console.error('Screenshot error:', e.message);
+        console.log('⚠️ Screenshot failed, continuing without preview');
       }
 
       // Get layout properties
