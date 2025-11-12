@@ -4,6 +4,56 @@ figma.showUI(__html__, { width: 450, height: 650 });
 let brandGuidelines = null;
 
 figma.ui.onmessage = async (msg) => {
+  if (msg.type === 'grade-frame') {
+    try {
+      console.log('🤖 Processing grade request from UI...');
+      
+      const { frameData, guidelinesContent, aiUnderstanding, colors, typography, spacing, apiKey, endpoint } = msg;
+      
+      // Make the API call from the plugin (server-side, not from iframe)
+      fetch(`${endpoint}/api/compliance-grade`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          frameData: frameData,
+          guidelinesContent: guidelinesContent,
+          aiUnderstanding: aiUnderstanding,
+          colors: colors,
+          typography: typography,
+          spacing: spacing,
+          apiKey: apiKey
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('✅ Grade response received:', data);
+        figma.ui.postMessage({
+          type: 'grade-complete',
+          data: data.success ? data.data : null,
+          error: data.success ? null : (data.message || 'Failed to grade')
+        });
+      })
+      .catch(error => {
+        console.error('❌ Grade API error:', error);
+        figma.ui.postMessage({
+          type: 'grade-complete',
+          data: null,
+          error: error.message
+        });
+      });
+      
+    } catch (error) {
+      console.error('Grade processing error:', error);
+      figma.ui.postMessage({
+        type: 'grade-complete',
+        data: null,
+        error: error.message
+      });
+    }
+  }
+
   if (msg.type === 'capture-grade-data') {
     try {
       console.log('📊 Capturing grade data...');

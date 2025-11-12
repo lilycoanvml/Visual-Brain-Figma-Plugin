@@ -744,6 +744,20 @@
         gradeFrameData = msg.frameData;
         console.log('📊 Grade frame data captured:', gradeFrameData);
       }
+
+      if (msg.type === 'grade-complete') {
+        const btn = document.getElementById('grade-button');
+        btn.disabled = false;
+        btn.innerHTML = '🎯 Grade Selected Frame';
+        
+        if (msg.data) {
+          complianceReportData = msg.data;
+          displayComplianceGrade(msg.data, gradeFrameData);
+          switchTab('grade');
+        } else if (msg.error) {
+          showMessage('Grading error: ' + msg.error, 'error');
+        }
+      }
       
       if (msg.type === 'guidelines-loaded') {
         if (msg.guidelines) {
@@ -1151,7 +1165,6 @@
           } 
         }, '*');
         
-        // Wait longer for screenshot to be captured
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         if (!gradeFrameData) {
@@ -1181,41 +1194,24 @@
 
         btn.innerHTML = '🤖 Analyzing against guidelines... <span class="loading-spinner"></span>';
 
-        const response = await fetch(`${endpoint}/api/compliance-grade`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        // Send to Figma plugin to make the API call
+        parent.postMessage({ 
+          pluginMessage: { 
+            type: 'grade-frame',
             frameData: gradeFrameData,
             guidelinesContent: parsedGuidelines.rawContent || '',
             aiUnderstanding: parsedGuidelines.aiUnderstanding || {},
             colors: parsedGuidelines.colors || [],
             typography: parsedGuidelines.typography || {},
             spacing: parsedGuidelines.spacing || {},
-            apiKey: apiKey
-          })
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Grading failed');
-        }
-
-        const data = await response.json();
-        
-        if (data.success) {
-          complianceReportData = data.data;
-          displayComplianceGrade(data.data, gradeFrameData);
-          switchTab('grade');
-        } else {
-          throw new Error(data.error || 'Failed to generate grade');
-        }
+            apiKey: apiKey,
+            endpoint: endpoint
+          } 
+        }, '*');
 
       } catch (error) {
         console.error('Grade error:', error);
         showMessage('Error: ' + error.message, 'error');
-      } finally {
         btn.disabled = false;
         btn.innerHTML = '🎯 Grade Selected Frame';
       }
