@@ -634,59 +634,47 @@
     </div>
 
     <div id="grade-results" style="display: none;">
-      <!-- Overall Score Card -->
-      <div class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px;">
-        <div style="text-align: center;">
-          <div style="font-size: 56px; font-weight: 700; margin-bottom: 8px;" id="overall-score">--</div>
-          <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;" id="overall-grade">LOADING</div>
-          <div style="font-size: 12px; opacity: 0.9; line-height: 1.6;" id="overall-message"></div>
-        </div>
-      </div>
-
       <!-- Stats Grid -->
       <div class="section">
+        <h3>📊 Compliance Summary</h3>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-          <div style="background: #d4edda; padding: 12px; border-radius: 6px; text-align: center; border-left: 3px solid #28a745;">
-            <div style="font-size: 20px; font-weight: 700; color: #28a745;" id="stat-pass">0</div>
-            <div style="font-size: 10px; color: #155724; font-weight: 500;">Passing</div>
+          <div style="background: #d4edda; padding: 16px; border-radius: 6px; text-align: center; border-left: 4px solid #28a745;">
+            <div style="font-size: 24px; font-weight: 700; color: #28a745;" id="stat-pass">0</div>
+            <div style="font-size: 11px; color: #155724; font-weight: 500; margin-top: 4px;">Passing</div>
           </div>
-          <div style="background: #fff3cd; padding: 12px; border-radius: 6px; text-align: center; border-left: 3px solid #ffc107;">
-            <div style="font-size: 20px; font-weight: 700; color: #ffc107;" id="stat-warning">0</div>
-            <div style="font-size: 10px; color: #856404; font-weight: 500;">Warnings</div>
+          <div style="background: #fff3cd; padding: 16px; border-radius: 6px; text-align: center; border-left: 4px solid #ffc107;">
+            <div style="font-size: 24px; font-weight: 700; color: #ffc107;" id="stat-warning">0</div>
+            <div style="font-size: 11px; color: #856404; font-weight: 500; margin-top: 4px;">Warnings</div>
           </div>
-          <div style="background: #f8d7da; padding: 12px; border-radius: 6px; text-align: center; border-left: 3px solid #dc3545;">
-            <div style="font-size: 20px; font-weight: 700; color: #dc3545;" id="stat-critical">0</div>
-            <div style="font-size: 10px; color: #721c24; font-weight: 500;">Critical</div>
+          <div style="background: #f8d7da; padding: 16px; border-radius: 6px; text-align: center; border-left: 4px solid #dc3545;">
+            <div style="font-size: 24px; font-weight: 700; color: #dc3545;" id="stat-critical">0</div>
+            <div style="font-size: 11px; color: #721c24; font-weight: 500; margin-top: 4px;">Critical</div>
           </div>
         </div>
       </div>
 
       <!-- Creative Preview -->
       <div class="section">
-        <h3>📸 Creative Preview</h3>
-        <div id="creative-preview" style="background: #f8f9fa; border-radius: 8px; overflow: hidden; max-height: 300px;">
-          <img id="preview-image" style="width: 100%; height: auto; display: block;" src="" alt="Preview">
+        <h3>📸 Frame Details</h3>
+        <div id="creative-preview" style="background: #f8f9fa; border-radius: 8px; overflow: hidden; max-height: 200px; margin-bottom: 12px;">
+          <img id="preview-image" style="width: 100%; height: auto; display: none;" src="" alt="Preview">
         </div>
-        <div style="margin-top: 12px; font-size: 11px; color: #666;">
+        <div style="font-size: 11px; color: #666;">
           <strong id="preview-name">Frame Name</strong>
-          <div id="detected-elements" style="margin-top: 8px;"></div>
+          <div id="detected-elements" style="margin-top: 8px; font-size: 10px;"></div>
         </div>
       </div>
 
       <!-- Detected Properties -->
       <div class="section">
         <h3>🎨 Detected Elements</h3>
-        <div id="detected-colors" style="margin-bottom: 16px;">
-          <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #333;">Colors:</div>
-          <div id="colors-list" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+        <div id="detected-colors" style="margin-bottom: 12px;">
+          <div style="font-size: 10px; font-weight: 600; margin-bottom: 6px; color: #666;">Colors:</div>
+          <div id="colors-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
         </div>
-        <div id="detected-fonts" style="margin-bottom: 16px;">
-          <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #333;">Fonts:</div>
-          <div id="fonts-list" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
-        </div>
-        <div id="detected-logos" style="margin-bottom: 16px;">
-          <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #333;">Images/Elements:</div>
-          <div id="logos-list" style="font-size: 11px;"></div>
+        <div id="detected-fonts" style="margin-bottom: 12px;">
+          <div style="font-size: 10px; font-weight: 600; margin-bottom: 6px; color: #666;">Fonts:</div>
+          <div id="fonts-list" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
         </div>
       </div>
 
@@ -1233,62 +1221,36 @@
       const passedCount = (report.passed || []).length;
       const warningCount = (report.warnings || []).length;
       const criticalCount = (report.violations || []).length;
-      
-      const score = totalChecks > 0 ? Math.round((passedCount / totalChecks) * 100) : 100;
-      let grade = 'A+';
-      let gradeColor = '#28a745';
-      let message = 'Excellent! This design fully complies with brand guidelines.';
-      
-      if (score >= 90) {
-        grade = 'A';
-        message = 'Great! This design meets brand guidelines with minimal issues.';
-      } else if (score >= 80) {
-        grade = 'B';
-        gradeColor = '#ffc107';
-        message = 'Good. This design mostly complies but has some warnings to address.';
-      } else if (score >= 70) {
-        grade = 'C';
-        gradeColor = '#fd7e14';
-        message = 'Fair. This design needs attention to several brand guideline violations.';
-      } else {
-        grade = 'F';
-        gradeColor = '#dc3545';
-        message = 'Poor. This design has critical violations and needs significant revision.';
-      }
-
-      document.getElementById('overall-score').textContent = score;
-      document.getElementById('overall-score').style.color = gradeColor;
-      document.getElementById('overall-grade').textContent = 'Grade: ' + grade;
-      document.getElementById('overall-grade').style.color = gradeColor;
-      document.getElementById('overall-message').textContent = message;
 
       document.getElementById('stat-pass').textContent = passedCount;
       document.getElementById('stat-warning').textContent = warningCount;
       document.getElementById('stat-critical').textContent = criticalCount;
 
       if (frameData.screenshot) {
-        document.getElementById('preview-image').src = frameData.screenshot;
+        const previewImg = document.getElementById('preview-image');
+        previewImg.src = frameData.screenshot;
+        previewImg.style.display = 'block';
       }
       document.getElementById('preview-name').textContent = frameData.frameName || 'Selected Frame';
 
       const elementsHtml = [];
       if (frameData.colors && frameData.colors.length > 0) {
-        elementsHtml.push(`<div>🎨 <strong>${frameData.colors.length}</strong> colors detected</div>`);
+        elementsHtml.push(`🎨 ${frameData.colors.length} colors`);
       }
       if (frameData.fonts && frameData.fonts.length > 0) {
-        elementsHtml.push(`<div>✍️ <strong>${frameData.fonts.length}</strong> fonts detected</div>`);
+        elementsHtml.push(`✍️ ${frameData.fonts.length} fonts`);
       }
       if (frameData.images && frameData.images.length > 0) {
-        elementsHtml.push(`<div>📸 <strong>${frameData.images.length}</strong> images detected</div>`);
+        elementsHtml.push(`📸 ${frameData.images.length} images`);
       }
-      document.getElementById('detected-elements').innerHTML = elementsHtml.join('');
+      document.getElementById('detected-elements').innerHTML = elementsHtml.join(' • ');
 
       let colorsHtml = '';
       if (frameData.colors && frameData.colors.length > 0) {
-        frameData.colors.forEach(color => {
+        frameData.colors.slice(0, 8).forEach(color => {
           colorsHtml += `<div style="text-align: center;">
-            <div class="color-swatch" style="background: ${color.hex}; margin-bottom: 20px;" title="${color.hex}"></div>
-            <div style="font-size: 9px; color: #666;">${color.hex}</div>
+            <div class="color-swatch" style="background: ${color.hex}; width: 28px; height: 28px; border-radius: 4px; border: 1px solid #ddd;"></div>
+            <div style="font-size: 8px; color: #999; margin-top: 2px;">${color.hex}</div>
           </div>`;
         });
       }
@@ -1297,19 +1259,10 @@
       let fontsHtml = '';
       if (frameData.fonts && frameData.fonts.length > 0) {
         frameData.fonts.forEach(font => {
-          fontsHtml += `<span class="font-badge">${font}</span>`;
+          fontsHtml += `<span style="background: #667eea; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 500;">${font}</span>`;
         });
       }
       document.getElementById('fonts-list').innerHTML = fontsHtml || '<div style="color: #999; font-size: 10px;">No fonts detected</div>';
-
-      let logosHtml = '<div style="font-size: 10px; color: #666;">';
-      if (frameData.images && frameData.images.length > 0) {
-        logosHtml += frameData.images.map(img => `• ${img}`).join('<br>');
-      } else {
-        logosHtml += 'No images detected';
-      }
-      logosHtml += '</div>';
-      document.getElementById('logos-list').innerHTML = logosHtml;
 
       const byCategory = {};
       
@@ -1347,7 +1300,7 @@
             <div class="grade-category-content active">`;
 
         if (items.critical.length === 0 && items.warning.length === 0 && items.pass.length > 0) {
-          categoriesHtml += `<div class="no-issues">✓ All checks passed for ${category}</div>`;
+          categoriesHtml += `<div class="no-issues">✓ All checks passed</div>`;
         } else {
           items.pass.forEach(item => {
             categoriesHtml += `
@@ -1591,13 +1544,17 @@
       
       endpoint = endpoint.replace(/\/$/, '');
 
+      // Build context with safe checks
+      const aiData = parsedGuidelines?.aiUnderstanding || {};
+      
       let contextPrompt = `You are an expert brand design consultant. The user is asking you about their brand guidelines.
 
 BRAND INFORMATION:
-Brand Essence: "${parsedGuidelines.aiUnderstanding.brandEssence || ''}"
-Brand Personality: ${parsedGuidelines.aiUnderstanding.brandPersonality || ''}
-Visual Style: ${parsedGuidelines.aiUnderstanding.visualStyle || ''}
-Target Audience: ${parsedGuidelines.aiUnderstanding.targetAudience || ''}
+Brand Essence: "${aiData.brandEssence || 'Not specified'}"
+Brand Personality: ${aiData.brandPersonality || 'Not specified'}
+Visual Style: ${aiData.visualStyle || 'Not specified'}
+Target Audience: ${aiData.targetAudience || 'Not specified'}
+Core Values: ${aiData.coreValues || 'Not specified'}
 
 User's Question: ${userMessage}
 
