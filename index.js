@@ -84,17 +84,23 @@ app.post('/api/compliance-grade', async (req, res) => {
 
     const anthropic = new Anthropic({ apiKey: apiKey.trim() });
 
-    const prompt = `Grade this Figma design against brand guidelines. Create a compliance report.
+    // Build message content with text and optional image
+    const messageContent = [
+      {
+        type: 'text',
+        text: `Grade this Figma design against brand guidelines. Create a compliance report.
 
 BRAND GUIDELINES:
 ${guidelinesContent.substring(0, 6000)}
 
 BRAND PERSONALITY: ${aiUnderstanding?.brandPersonality || 'Unknown'}
+VISUAL STYLE: ${aiUnderstanding?.visualStyle || 'Unknown'}
 
 DESIGN:
 - Frame: ${frameData.frameName}
 - Colors: ${frameData.colors?.map(c => c.hex).join(', ') || 'None'}
 - Fonts: ${frameData.fonts?.join(', ') || 'None'}
+- Text content: ${frameData.textContent?.map(t => t.content.substring(0, 50)).join('; ') || 'None'}
 
 Check these categories:
 1. Accessibility
@@ -108,14 +114,38 @@ Check these categories:
 
 For each check provide: category, check, severity (critical/warning/pass), reason
 
-Respond ONLY with JSON array of objects with: {category, check, severity, reason}`;
+Respond ONLY with JSON array of objects with: {category, check, severity, reason}`
+      }
+    ];
+
+    // Add screenshot if available
+    if (frameData.screenshot) {
+      try {
+        let imageBase64 = frameData.screenshot;
+        if (imageBase64.includes('base64,')) {
+          imageBase64 = imageBase64.split('base64,')[1];
+        }
+        
+        messageContent.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: 'image/png',
+            data: imageBase64
+          }
+        });
+        console.log('📸 Screenshot added to analysis');
+      } catch (e) {
+        console.log('⚠️ Could not add screenshot:', e.message);
+      }
+    }
 
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-1-20250805',
       max_tokens: 3000,
       messages: [{
         role: 'user',
-        content: prompt
+        content: messageContent
       }]
     });
 

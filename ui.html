@@ -1494,7 +1494,10 @@
       
       if (!message) return;
       
-      if (!parsedGuidelines || !parsedGuidelines.aiUnderstanding) {
+      // Check if guidelines are loaded
+      if (!parsedGuidelines) {
+        console.log('❌ No guidelines loaded');
+        console.log('parsedGuidelines:', parsedGuidelines);
         addChatMessage('system', 'Please upload brand guidelines with AI analysis enabled first (in the Upload Guidelines tab).');
         return;
       }
