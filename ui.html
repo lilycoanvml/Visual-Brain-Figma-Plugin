@@ -33,6 +33,7 @@
       gap: 8px;
       margin-bottom: 16px;
       border-bottom: 2px solid #e0e0e0;
+      overflow-x: auto;
     }
     .tab {
       padding: 8px 16px;
@@ -44,6 +45,7 @@
       color: #666;
       position: relative;
       transition: color 0.2s;
+      white-space: nowrap;
     }
     .tab.active {
       color: #667eea;
@@ -352,6 +354,132 @@
       font-weight: 600;
       margin-left: 8px;
     }
+    .grade-category {
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .grade-category-header {
+      padding: 14px 16px;
+      font-weight: 600;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s;
+    }
+    .grade-category-header:hover {
+      opacity: 0.9;
+    }
+    .grade-category.green .grade-category-header {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid #28a745;
+    }
+    .grade-category.yellow .grade-category-header {
+      background: #fff3cd;
+      color: #856404;
+      border-left: 4px solid #ffc107;
+    }
+    .grade-category.red .grade-category-header {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 4px solid #dc3545;
+    }
+    .grade-status-icon {
+      font-size: 16px;
+      min-width: 20px;
+    }
+    .grade-category-title {
+      flex: 1;
+    }
+    .grade-category-count {
+      font-size: 10px;
+      opacity: 0.8;
+      margin-left: auto;
+    }
+    .grade-category-content {
+      padding: 12px 16px;
+      background: #f8f9fa;
+      display: none;
+      font-size: 11px;
+      line-height: 1.6;
+      border-top: 1px solid #e0e0e0;
+    }
+    .grade-category-content.active {
+      display: block;
+    }
+    .grade-violation-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      border-left: 3px solid;
+    }
+    .grade-violation-item.critical {
+      background: #f8d7da;
+      border-left-color: #dc3545;
+      color: #721c24;
+    }
+    .grade-violation-item.warning {
+      background: #fff3cd;
+      border-left-color: #ffc107;
+      color: #856404;
+    }
+    .grade-violation-item.pass {
+      background: #d4edda;
+      border-left-color: #28a745;
+      color: #155724;
+    }
+    .grade-violation-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .grade-violation-reason {
+      opacity: 0.9;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+    .color-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      display: inline-block;
+      cursor: pointer;
+      position: relative;
+    }
+    .color-swatch-label {
+      font-size: 9px;
+      position: absolute;
+      bottom: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      background: white;
+      padding: 2px 4px;
+      border-radius: 2px;
+      border: 1px solid #ddd;
+    }
+    .font-badge {
+      background: #667eea;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    .no-issues {
+      color: #28a745;
+      font-weight: 600;
+      padding: 12px;
+      text-align: center;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -365,6 +493,7 @@
   <div class="tab-container">
     <button class="tab active" data-tab="upload">Upload Guidelines</button>
     <button class="tab" data-tab="analyze">Analyze Selection</button>
+    <button class="tab" data-tab="grade">📊 Compliance Grade</button>
   </div>
 
   <!-- Upload Tab -->
@@ -442,6 +571,7 @@
 
   <!-- Analyze Tab -->
   <div id="analyze-tab" class="tab-content">
+    <!-- AI Chat Section -->
     <div class="section" id="ai-chat-section">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
         <h3 style="margin: 0;">💬 AI Brand Assistant</h3>
@@ -453,18 +583,11 @@
         <span id="chat-status-text">⚠️ AI chat is currently unavailable in Figma plugins due to CORS restrictions. Use the pattern-based analysis features below!</span>
       </p>
       
-      <div id="chat-messages" style="background: #f8f9fa; border-radius: 8px; padding: 12px; min-height: 250px; max-height: 400px; overflow-y: auto; margin-bottom: 12px;">
-        <div id="chat-welcome" style="text-align: center; color: #999; font-size: 11px; padding: 40px 20px;">
-          <div style="font-size: 48px; margin-bottom: 12px;">🤖</div>
+      <div id="chat-messages" style="background: #f8f9fa; border-radius: 8px; padding: 12px; min-height: 200px; max-height: 350px; overflow-y: auto; margin-bottom: 12px;">
+        <div id="chat-welcome" style="text-align: center; color: #999; font-size: 11px; padding: 30px 20px;">
+          <div style="font-size: 40px; margin-bottom: 12px;">🤖</div>
           <p style="margin: 0 0 8px 0;"><strong>AI Brand Assistant Ready</strong></p>
-          <p style="margin: 0;">Upload your brand guidelines with AI analysis enabled, then come back here to:</p>
-          <ul style="list-style: none; padding: 0; margin: 12px 0 0 0;">
-            <li>✅ Validate your guidelines</li>
-            <li>💡 Get improvement suggestions</li>
-            <li>🎨 Explore design ideas</li>
-            <li>🎯 Understand your brand better</li>
-            <li>📐 Check Figma designs</li>
-          </ul>
+          <p style="margin: 0;">Upload your brand guidelines with AI analysis enabled to chat.</p>
         </div>
       </div>
 
@@ -483,29 +606,9 @@
           Send
         </button>
       </div>
-
-      <div id="quick-questions" style="margin-bottom: 16px; display: none;">
-        <p style="font-size: 10px; color: #666; margin: 0 0 6px 0; font-weight: 500;">Quick questions:</p>
-        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-          <button class="button secondary" onclick="askQuickQuestion('Summarize my brand guidelines')" style="width: auto; padding: 6px 12px; font-size: 10px;">
-            📋 Summarize guidelines
-          </button>
-          <button class="button secondary" onclick="askQuickQuestion('What is my brand personality and target audience?')" style="width: auto; padding: 6px 12px; font-size: 10px;">
-            🎯 Brand overview
-          </button>
-          <button class="button secondary" onclick="askQuickQuestion('What colors and fonts should I use?')" style="width: auto; padding: 6px 12px; font-size: 10px;">
-            🎨 Design specs
-          </button>
-          <button class="button secondary" onclick="askQuickQuestion('Give me 3 design ideas that match my brand')" style="width: auto; padding: 6px 12px; font-size: 10px;">
-            💡 Design ideas
-          </button>
-          <button class="button secondary" onclick="askQuickQuestion('What are the dos and donts of my brand?')" style="width: auto; padding: 6px 12px; font-size: 10px;">
-            ⚠️ Dos & Don'ts
-          </button>
-        </div>
-      </div>
     </div>
 
+    <!-- Figma Analysis Section -->
     <div class="section">
       <h3>🔍 Analyze Figma Selection</h3>
       <p style="font-size: 11px; color: #666; margin-bottom: 12px;">
@@ -520,6 +623,78 @@
     <div id="analysis-results"></div>
   </div>
 
+  <!-- Compliance Grade Tab -->
+  <div id="grade-tab" class="tab-content">
+    <div class="section">
+      <h3>📊 Brand Compliance Grade</h3>
+      <p style="font-size: 11px; color: #666; margin-bottom: 12px;">
+        Select a frame to grade its compliance against your brand guidelines.
+      </p>
+      <button class="button" id="grade-button">🎯 Grade Selected Frame</button>
+    </div>
+
+    <div id="grade-results" style="display: none;">
+      <!-- Overall Score Card -->
+      <div class="section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px;">
+        <div style="text-align: center;">
+          <div style="font-size: 56px; font-weight: 700; margin-bottom: 8px;" id="overall-score">--</div>
+          <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;" id="overall-grade">LOADING</div>
+          <div style="font-size: 12px; opacity: 0.9; line-height: 1.6;" id="overall-message"></div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="section">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+          <div style="background: #d4edda; padding: 12px; border-radius: 6px; text-align: center; border-left: 3px solid #28a745;">
+            <div style="font-size: 20px; font-weight: 700; color: #28a745;" id="stat-pass">0</div>
+            <div style="font-size: 10px; color: #155724; font-weight: 500;">Passing</div>
+          </div>
+          <div style="background: #fff3cd; padding: 12px; border-radius: 6px; text-align: center; border-left: 3px solid #ffc107;">
+            <div style="font-size: 20px; font-weight: 700; color: #ffc107;" id="stat-warning">0</div>
+            <div style="font-size: 10px; color: #856404; font-weight: 500;">Warnings</div>
+          </div>
+          <div style="background: #f8d7da; padding: 12px; border-radius: 6px; text-align: center; border-left: 3px solid #dc3545;">
+            <div style="font-size: 20px; font-weight: 700; color: #dc3545;" id="stat-critical">0</div>
+            <div style="font-size: 10px; color: #721c24; font-weight: 500;">Critical</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Creative Preview -->
+      <div class="section">
+        <h3>📸 Creative Preview</h3>
+        <div id="creative-preview" style="background: #f8f9fa; border-radius: 8px; overflow: hidden; max-height: 300px;">
+          <img id="preview-image" style="width: 100%; height: auto; display: block;" src="" alt="Preview">
+        </div>
+        <div style="margin-top: 12px; font-size: 11px; color: #666;">
+          <strong id="preview-name">Frame Name</strong>
+          <div id="detected-elements" style="margin-top: 8px;"></div>
+        </div>
+      </div>
+
+      <!-- Detected Properties -->
+      <div class="section">
+        <h3>🎨 Detected Elements</h3>
+        <div id="detected-colors" style="margin-bottom: 16px;">
+          <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #333;">Colors:</div>
+          <div id="colors-list" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+        </div>
+        <div id="detected-fonts" style="margin-bottom: 16px;">
+          <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #333;">Fonts:</div>
+          <div id="fonts-list" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+        </div>
+        <div id="detected-logos" style="margin-bottom: 16px;">
+          <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px; color: #333;">Images/Elements:</div>
+          <div id="logos-list" style="font-size: 11px;"></div>
+        </div>
+      </div>
+
+      <!-- Violations by Category -->
+      <div id="violations-container"></div>
+    </div>
+  </div>
+
   <script>
     if (typeof pdfjsLib !== 'undefined') {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -531,6 +706,8 @@
     let pdfImages = [];
     let chatHistory = [];
     let currentAnalysisData = null;
+    let complianceReportData = null;
+    let gradeFrameData = null;
 
     window.onload = () => {
       setupDragAndDrop();
@@ -562,6 +739,11 @@
     window.onmessage = (event) => {
       const msg = event.data.pluginMessage;
       if (!msg) return;
+      
+      if (msg.type === 'grade-data-captured') {
+        gradeFrameData = msg.frameData;
+        console.log('📊 Grade frame data captured:', gradeFrameData);
+      }
       
       if (msg.type === 'guidelines-loaded') {
         if (msg.guidelines) {
@@ -603,11 +785,6 @@
       if (msg.type === 'analysis-complete') {
         currentAnalysisData = msg.analysis;
         displayAnalysis(msg.analysis);
-        
-        if (parsedGuidelines && parsedGuidelines.aiUnderstanding) {
-          const summary = `📊 Analysis complete for "${msg.analysis.name}". Found ${msg.analysis.violations.length} issues and ${msg.analysis.goodPractices.length} good practices. Feel free to ask me about the results!`;
-          addChatMessage('system', summary);
-        }
       }
       
       if (msg.type === 'error') {
@@ -640,6 +817,7 @@
     function setupButtons() {
       document.getElementById('parse-button').addEventListener('click', parseGuidelines);
       document.getElementById('analyze-button').addEventListener('click', analyzeSelection);
+      document.getElementById('grade-button').addEventListener('click', generateComplianceGrade);
       document.getElementById('file-input').addEventListener('change', handleFileSelect);
       document.getElementById('drop-zone').addEventListener('click', () => {
         document.getElementById('file-input').click();
@@ -763,91 +941,6 @@
       }
     }
 
-    async function extractImagesAndColorsFromPDF(file) {
-      if (typeof pdfjsLib === 'undefined') {
-        throw new Error('PDF.js library not loaded');
-      }
-
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        
-        const extractedColors = new Set();
-        const images = [];
-        
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          updateProgress((pageNum / pdf.numPages) * 100, `Analyzing page ${pageNum} of ${pdf.numPages}...`);
-          
-          const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1.0 });
-          
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          
-          await page.render({
-            canvasContext: context,
-            viewport: viewport
-          }).promise;
-          
-          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-          const pixels = imageData.data;
-          
-          for (let i = 0; i < pixels.length; i += 200) {
-            const r = pixels[i];
-            const g = pixels[i + 1];
-            const b = pixels[i + 2];
-            const a = pixels[i + 3];
-            
-            if (a > 200 && !(r > 240 && g > 240 && b > 240) && !(r < 15 && g < 15 && b < 15)) {
-              const hex = rgbToHex(r, g, b);
-              extractedColors.add(hex);
-            }
-          }
-          
-          images.push(canvas.toDataURL('image/png'));
-        }
-        
-        return {
-          colors: Array.from(extractedColors),
-          images: images
-        };
-      } catch (error) {
-        console.error('Image extraction error:', error);
-        throw new Error('Failed to extract images from PDF');
-      }
-    }
-
-    async function performOCR(images) {
-      if (typeof Tesseract === 'undefined') {
-        console.warn('Tesseract.js not loaded, skipping OCR');
-        return '';
-      }
-
-      let ocrText = '';
-      
-      for (let i = 0; i < images.length; i++) {
-        updateProgress(((i + 1) / images.length) * 100, `Running OCR on page ${i + 1} of ${images.length}...`);
-        
-        try {
-          const result = await Tesseract.recognize(images[i], 'eng');
-          ocrText += result.data.text + '\n';
-        } catch (error) {
-          console.error('OCR error on page', i + 1, error);
-        }
-      }
-      
-      return ocrText;
-    }
-
-    function rgbToHex(r, g, b) {
-      return '#' + [r, g, b].map(x => {
-        const hex = Math.round(x).toString(16).toUpperCase();
-        return hex.length === 1 ? '0' + hex : hex;
-      }).join('');
-    }
-
     function displayUploadedFile(file) {
       const container = document.getElementById('uploaded-file-display');
       const sizeKB = (file.size / 1024).toFixed(2);
@@ -900,29 +993,10 @@
       btn.disabled = true;
       btn.innerHTML = '🔍 Parsing... <span class="loading-spinner"></span>';
 
-      const deepAnalysis = document.getElementById('deep-analysis').checked;
-      const ocrAnalysis = document.getElementById('ocr-analysis').checked;
       const aiAnalysis = document.getElementById('ai-analysis').checked;
       
-      let content = uploadedFileContent;
-      let extractedColors = [];
-      let aiUnderstanding = null;
-      
       try {
-        if (uploadedFile.name.endsWith('.pdf')) {
-          if (deepAnalysis) {
-            updateProgress(10, 'Extracting images and colors from PDF...');
-            const extracted = await extractImagesAndColorsFromPDF(uploadedFile);
-            extractedColors = extracted.colors;
-            pdfImages = extracted.images;
-            
-            if (ocrAnalysis && pdfImages.length > 0) {
-              updateProgress(30, 'Running OCR analysis...');
-              const ocrText = await performOCR(pdfImages);
-              content += '\n\n' + ocrText;
-            }
-          }
-        }
+        updateProgress(60, 'AI is reading and understanding your brand guidelines...');
         
         if (aiAnalysis) {
           const apiKey = document.getElementById('api-key-input').value.trim();
@@ -934,10 +1008,8 @@
               } 
             }, '*');
             
-            updateProgress(60, 'AI is reading and understanding your brand guidelines...');
-            
             try {
-              aiUnderstanding = await analyzeWithAI(content, pdfImages.slice(0, 3), apiKey);
+              await analyzeWithAI(uploadedFileContent, apiKey);
             } catch (error) {
               console.error('AI analysis error:', error);
               showMessage('AI analysis failed: ' + error.message + '. Continuing with standard analysis...', 'error');
@@ -952,10 +1024,8 @@
         parent.postMessage({ 
           pluginMessage: { 
             type: 'parse-guidelines',
-            content: content,
-            filename: uploadedFile.name,
-            extractedColors: extractedColors,
-            aiUnderstanding: aiUnderstanding
+            content: uploadedFileContent,
+            filename: uploadedFile.name
           } 
         }, '*');
       } catch (error) {
@@ -967,7 +1037,7 @@
       }
     }
 
-    async function analyzeWithAI(content, imageDataUrls, apiKey) {
+    async function analyzeWithAI(content, apiKey) {
       let endpoint = document.getElementById('api-endpoint-input').value.trim();
       
       if (!endpoint || endpoint === 'https://your-backend.vercel.app' || endpoint.includes('YOUR-API-URL')) {
@@ -994,7 +1064,7 @@
         },
         body: JSON.stringify({
           content: content,
-          images: imageDataUrls,
+          images: [],
           apiKey: apiKey
         })
       });
@@ -1010,7 +1080,14 @@
         throw new Error(data.error || 'Analysis failed');
       }
 
-      return data.data;
+      parent.postMessage({ 
+        pluginMessage: { 
+          type: 'parse-guidelines',
+          content: content,
+          filename: uploadedFile.name,
+          aiUnderstanding: data.data
+        } 
+      }, '*');
     }
 
     function displayGuidelinesPreview(guidelines) {
@@ -1038,34 +1115,6 @@
           html += '</div>';
         }
         
-        if (ai.visualStyle) {
-          html += '<div style="background: rgba(255,255,255,0.15); padding: 10px; border-radius: 6px; margin-bottom: 8px;">';
-          html += '<strong style="display: block; margin-bottom: 4px; font-size: 11px; opacity: 0.9;">Visual Style:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.5;">' + escapeHtml(ai.visualStyle) + '</p>';
-          html += '</div>';
-        }
-        
-        if (ai.targetAudience) {
-          html += '<div style="background: rgba(255,255,255,0.15); padding: 10px; border-radius: 6px; margin-bottom: 8px;">';
-          html += '<strong style="display: block; margin-bottom: 4px; font-size: 11px; opacity: 0.9;">Target Audience:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.5;">' + escapeHtml(ai.targetAudience) + '</p>';
-          html += '</div>';
-        }
-        
-        if (ai.colorPsychology) {
-          html += '<div style="background: rgba(255,255,255,0.15); padding: 10px; border-radius: 6px; margin-bottom: 8px;">';
-          html += '<strong style="display: block; margin-bottom: 4px; font-size: 11px; opacity: 0.9;">🎨 Color Psychology:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.5;">' + escapeHtml(ai.colorPsychology) + '</p>';
-          html += '</div>';
-        }
-        
-        if (ai.imageryStyle) {
-          html += '<div style="background: rgba(255,255,255,0.15); padding: 10px; border-radius: 6px;">';
-          html += '<strong style="display: block; margin-bottom: 4px; font-size: 11px; opacity: 0.9;">📸 Imagery Style:</strong>';
-          html += '<p style="margin: 0; font-size: 11px; line-height: 1.5;">' + escapeHtml(ai.imageryStyle) + '</p>';
-          html += '</div>';
-        }
-        
         html += '</div>';
       }
       
@@ -1085,204 +1134,246 @@
       }, '*');
     }
 
-    function enableChat() {
-      const welcome = document.getElementById('chat-welcome');
-      if (welcome) {
-        welcome.remove();
+    async function generateComplianceGrade() {
+      if (!parsedGuidelines) {
+        showMessage('Please upload and parse brand guidelines first', 'error');
+        return;
       }
-      
-      const apiKeyInput = document.getElementById('api-key-input');
-      const hasApiKey = apiKeyInput && apiKeyInput.value.trim().length > 0;
-      
-      document.getElementById('chat-input').disabled = false;
-      document.getElementById('send-chat-btn').disabled = false;
-      
-      const statusBadge = document.getElementById('chat-status-badge');
-      
-      if (hasApiKey) {
-        document.getElementById('chat-status-text').innerHTML = '✅ AI Brand Assistant is ready! Ask me anything about your brand guidelines or designs.';
-        statusBadge.style.background = '#d4edda';
-        statusBadge.style.color = '#155724';
-        statusBadge.textContent = '✓ Ready';
-        
-        if (chatHistory.length === 0) {
-          const brandName = parsedGuidelines.aiUnderstanding?.brandEssence || 'your brand';
-          addChatMessage('ai', `Hi! 👋 I've learned all about ${brandName}. I can help you:\n\n• Understand your brand guidelines\n• Validate design decisions\n• Explore creative ideas\n• Check Figma designs for compliance\n• Answer any brand-related questions\n\nWhat would you like to know?`);
-        }
-      } else {
-        document.getElementById('chat-status-text').innerHTML = '⚠️ Chat is enabled, but add your API key in "Upload Guidelines" tab for full functionality.';
-        statusBadge.style.background = '#fff3cd';
-        statusBadge.style.color = '#856404';
-        statusBadge.textContent = '⚠️ API Key Needed';
-        
-        if (chatHistory.length === 0) {
-          const brandName = parsedGuidelines.aiUnderstanding?.brandEssence || 'your brand';
-          addChatMessage('ai', `Hi! 👋 I've learned all about ${brandName}.\n\n⚠️ To start chatting, please add your Anthropic API key in the "Upload Guidelines" tab.\n\nGet a free API key at: console.anthropic.com\n\nOnce added, come back and ask me anything!`);
-        }
-      }
-      
-      document.getElementById('quick-questions').style.display = 'block';
-    }
 
-    async function sendChatMessage() {
-      const input = document.getElementById('chat-input');
-      const message = input.value.trim();
-      
-      if (!message) return;
-      
-      if (!parsedGuidelines || !parsedGuidelines.aiUnderstanding) {
-        addChatMessage('system', 'Please upload brand guidelines with AI analysis enabled first (in the Upload Guidelines tab).');
-        return;
-      }
-      
-      const apiKeyInput = document.getElementById('api-key-input');
-      const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
-      
-      if (!apiKey) {
-        input.value = '';
-        addChatMessage('user', message);
-        addChatMessage('system', '🔑 To use AI chat, please add your Anthropic API key:\n\n1. Go to the "Upload Guidelines" tab\n2. Scroll to the API key field\n3. Enter your key (get one free at console.anthropic.com)\n4. Come back here and ask again!\n\nYour message has been saved.');
-        input.value = message;
-        return;
-      }
-      
-      addChatMessage('user', message);
-      input.value = '';
-      
-      const loadingId = 'loading-' + Date.now();
-      addChatMessage('ai', '<div style="display:flex;gap:4px;"><div style="width:8px;height:8px;background:#667eea;border-radius:50%;animation:bounce 1.4s infinite;"></div><div style="width:8px;height:8px;background:#667eea;border-radius:50%;animation:bounce 1.4s infinite;animation-delay:0.2s;"></div><div style="width:8px;height:8px;background:#667eea;border-radius:50%;animation:bounce 1.4s infinite;animation-delay:0.4s;"></div></div><style>@keyframes bounce{0%,80%,100%{transform:translateY(0);}40%{transform:translateY(-10px);}}</style>', loadingId);
-      
+      const btn = document.getElementById('grade-button');
+      btn.disabled = true;
+      btn.innerHTML = '📸 Capturing frame... <span class="loading-spinner"></span>';
+
       try {
-        const response = await chatWithAI(message, apiKey);
+        parent.postMessage({ 
+          pluginMessage: { 
+            type: 'capture-grade-data'
+          } 
+        }, '*');
         
-        const loadingMsg = document.getElementById(loadingId);
-        if (loadingMsg) loadingMsg.remove();
-        
-        addChatMessage('ai', response);
-      } catch (error) {
-        console.error('Chat error:', error);
-        
-        const loadingMsg = document.getElementById(loadingId);
-        if (loadingMsg) loadingMsg.remove();
-        
-        if (error.message.includes('401') || error.message.includes('authentication')) {
-          addChatMessage('system', '❌ Invalid API key. Please check your Anthropic API key in the Upload Guidelines tab and try again.');
-        } else {
-          addChatMessage('system', '❌ Error: ' + error.message + '\n\nPlease try again or check your internet connection.');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        if (!gradeFrameData) {
+          showMessage('Failed to capture frame data', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '🎯 Grade Selected Frame';
+          return;
         }
+
+        const apiKeyInput = document.getElementById('api-key-input');
+        const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+
+        if (!apiKey) {
+          showMessage('API key required for compliance grading', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '🎯 Grade Selected Frame';
+          return;
+        }
+
+        const endpoint = document.getElementById('api-endpoint-input').value.trim();
+        if (!endpoint || endpoint.includes('YOUR-API-URL')) {
+          showMessage('Backend API URL is required', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '🎯 Grade Selected Frame';
+          return;
+        }
+
+        btn.innerHTML = '🤖 Analyzing against guidelines... <span class="loading-spinner"></span>';
+
+        const response = await fetch(`${endpoint}/api/compliance-grade`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            frameData: gradeFrameData,
+            guidelinesContent: parsedGuidelines.rawContent || '',
+            aiUnderstanding: parsedGuidelines.aiUnderstanding || {},
+            colors: parsedGuidelines.colors || [],
+            typography: parsedGuidelines.typography || {},
+            spacing: parsedGuidelines.spacing || {},
+            apiKey: apiKey
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Grading failed');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          complianceReportData = data.data;
+          displayComplianceGrade(data.data, gradeFrameData);
+          switchTab('grade');
+        } else {
+          throw new Error(data.error || 'Failed to generate grade');
+        }
+
+      } catch (error) {
+        console.error('Grade error:', error);
+        showMessage('Error generating compliance grade: ' + error.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🎯 Grade Selected Frame';
       }
     }
 
-    function askQuickQuestion(question) {
-      document.getElementById('chat-input').value = question;
-      sendChatMessage();
-    }
-
-    function addChatMessage(type, message, id) {
-      const container = document.getElementById('chat-messages');
+    function displayComplianceGrade(report, frameData) {
+      const resultsDiv = document.getElementById('grade-results');
       
-      const msgDiv = document.createElement('div');
-      msgDiv.className = 'chat-message ' + type;
-      msgDiv.style.padding = '12px';
-      msgDiv.style.marginBottom = '8px';
-      msgDiv.style.borderRadius = '6px';
-      msgDiv.style.fontSize = '11px';
-      msgDiv.style.lineHeight = '1.6';
+      const totalChecks = (report.violations || []).length + (report.passed || []).length + (report.warnings || []).length;
+      const passedCount = (report.passed || []).length;
+      const warningCount = (report.warnings || []).length;
+      const criticalCount = (report.violations || []).length;
       
-      if (type === 'user') {
-        msgDiv.style.background = '#667eea';
-        msgDiv.style.color = 'white';
-        msgDiv.style.marginLeft = '20px';
-        msgDiv.style.textAlign = 'right';
-      } else if (type === 'ai') {
-        msgDiv.style.background = '#f0f2ff';
-        msgDiv.style.color = '#333';
-        msgDiv.style.marginRight = '20px';
+      const score = totalChecks > 0 ? Math.round((passedCount / totalChecks) * 100) : 100;
+      let grade = 'A+';
+      let gradeColor = '#28a745';
+      let message = 'Excellent! This design fully complies with brand guidelines.';
+      
+      if (score >= 90) {
+        grade = 'A';
+        message = 'Great! This design meets brand guidelines with minimal issues.';
+      } else if (score >= 80) {
+        grade = 'B';
+        gradeColor = '#ffc107';
+        message = 'Good. This design mostly complies but has some warnings to address.';
+      } else if (score >= 70) {
+        grade = 'C';
+        gradeColor = '#fd7e14';
+        message = 'Fair. This design needs attention to several brand guideline violations.';
       } else {
-        msgDiv.style.background = '#fff3cd';
-        msgDiv.style.color = '#856404';
+        grade = 'F';
+        gradeColor = '#dc3545';
+        message = 'Poor. This design has critical violations and needs significant revision.';
       }
-      
-      if (id) msgDiv.id = id;
-      
-      msgDiv.innerHTML = message;
-      container.appendChild(msgDiv);
-      container.scrollTop = container.scrollHeight;
-      
-      if (type !== 'system' && !message.includes('animation:bounce')) {
-        chatHistory.push({ 
-          role: type === 'user' ? 'user' : 'assistant', 
-          content: message 
+
+      document.getElementById('overall-score').textContent = score;
+      document.getElementById('overall-score').style.color = gradeColor;
+      document.getElementById('overall-grade').textContent = 'Grade: ' + grade;
+      document.getElementById('overall-grade').style.color = gradeColor;
+      document.getElementById('overall-message').textContent = message;
+
+      document.getElementById('stat-pass').textContent = passedCount;
+      document.getElementById('stat-warning').textContent = warningCount;
+      document.getElementById('stat-critical').textContent = criticalCount;
+
+      if (frameData.screenshot) {
+        document.getElementById('preview-image').src = frameData.screenshot;
+      }
+      document.getElementById('preview-name').textContent = frameData.frameName || 'Selected Frame';
+
+      const elementsHtml = [];
+      if (frameData.colors && frameData.colors.length > 0) {
+        elementsHtml.push(`<div>🎨 <strong>${frameData.colors.length}</strong> colors detected</div>`);
+      }
+      if (frameData.fonts && frameData.fonts.length > 0) {
+        elementsHtml.push(`<div>✍️ <strong>${frameData.fonts.length}</strong> fonts detected</div>`);
+      }
+      if (frameData.images && frameData.images.length > 0) {
+        elementsHtml.push(`<div>📸 <strong>${frameData.images.length}</strong> images detected</div>`);
+      }
+      document.getElementById('detected-elements').innerHTML = elementsHtml.join('');
+
+      let colorsHtml = '';
+      if (frameData.colors && frameData.colors.length > 0) {
+        frameData.colors.forEach(color => {
+          colorsHtml += `<div style="text-align: center;">
+            <div class="color-swatch" style="background: ${color.hex}; margin-bottom: 20px;" title="${color.hex}"></div>
+            <div style="font-size: 9px; color: #666;">${color.hex}</div>
+          </div>`;
         });
       }
-    }
+      document.getElementById('colors-list').innerHTML = colorsHtml || '<div style="color: #999; font-size: 10px;">No colors detected</div>';
 
-    async function chatWithAI(userMessage, apiKey) {
-      let endpoint = document.getElementById('api-endpoint-input').value.trim();
-      
-      if (!endpoint || endpoint === 'https://your-backend.vercel.app' || endpoint.includes('YOUR-API-URL')) {
-        throw new Error('API endpoint URL is required. Please enter your backend API URL in the "Backend API URL" field.');
+      let fontsHtml = '';
+      if (frameData.fonts && frameData.fonts.length > 0) {
+        frameData.fonts.forEach(font => {
+          fontsHtml += `<span class="font-badge">${font}</span>`;
+        });
       }
-      
-      if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
-        endpoint = 'https://' + endpoint;
+      document.getElementById('fonts-list').innerHTML = fontsHtml || '<div style="color: #999; font-size: 10px;">No fonts detected</div>';
+
+      let logosHtml = '<div style="font-size: 10px; color: #666;">';
+      if (frameData.images && frameData.images.length > 0) {
+        logosHtml += frameData.images.map(img => `• ${img}`).join('<br>');
+      } else {
+        logosHtml += 'No images detected';
       }
+      logosHtml += '</div>';
+      document.getElementById('logos-list').innerHTML = logosHtml;
+
+      const byCategory = {};
       
-      endpoint = endpoint.replace(/\/$/, '');
-
-      let contextPrompt = `You are an expert brand design consultant with deep understanding of the user's brand. You're having a conversation to help them understand and apply their brand guidelines.
-
-BRAND GUIDELINES YOU'VE LEARNED:
-
-Brand Essence: "${parsedGuidelines.aiUnderstanding.brandEssence}"
-
-Brand Personality: ${parsedGuidelines.aiUnderstanding.brandPersonality}
-
-Visual Style: ${parsedGuidelines.aiUnderstanding.visualStyle}
-
-Target Audience: ${parsedGuidelines.aiUnderstanding.targetAudience}
-
-Color Psychology: ${parsedGuidelines.aiUnderstanding.colorPsychology}
-
-Imagery Style: ${parsedGuidelines.aiUnderstanding.imageryStyle}
-
-User's question: ${userMessage}
-
-Please provide helpful, specific advice that references the brand personality, values, and guidelines. Be conversational but professional. Give actionable recommendations when appropriate.`;
-
-      const messages = chatHistory.slice(-10).map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
-
-      messages.push({
-        role: 'user',
-        content: contextPrompt
+      [...(report.passed || []), ...(report.warnings || []), ...(report.violations || [])].forEach(item => {
+        const cat = item.category || 'Other';
+        if (!byCategory[cat]) {
+          byCategory[cat] = { critical: [], warning: [], pass: [] };
+        }
+        
+        if (item.severity === 'critical') {
+          byCategory[cat].critical.push(item);
+        } else if (item.severity === 'warning') {
+          byCategory[cat].warning.push(item);
+        } else {
+          byCategory[cat].pass.push(item);
+        }
       });
 
-      const response = await fetch(`${endpoint}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: messages,
-          apiKey: apiKey
-        })
+      let categoriesHtml = '';
+      Object.entries(byCategory).forEach(([category, items]) => {
+        const hasCritical = items.critical.length > 0;
+        const hasWarning = items.warning.length > 0;
+        const categoryClass = hasCritical ? 'red' : hasWarning ? 'yellow' : 'green';
+        const statusIcon = hasCritical ? '✗' : hasWarning ? '⚠' : '✓';
+        const totalIssues = items.critical.length + items.warning.length + items.pass.length;
+        const resolvedIssues = items.pass.length;
+
+        categoriesHtml += `
+          <div class="grade-category ${categoryClass}">
+            <div class="grade-category-header" onclick="this.nextElementSibling.classList.toggle('active')">
+              <span class="grade-status-icon">${statusIcon}</span>
+              <span class="grade-category-title">${category}</span>
+              <span class="grade-category-count">${resolvedIssues}/${totalIssues}</span>
+            </div>
+            <div class="grade-category-content active">`;
+
+        if (items.critical.length === 0 && items.warning.length === 0 && items.pass.length > 0) {
+          categoriesHtml += `<div class="no-issues">✓ All checks passed for ${category}</div>`;
+        } else {
+          items.pass.forEach(item => {
+            categoriesHtml += `
+              <div class="grade-violation-item pass">
+                <div class="grade-violation-title">✓ ${item.check}</div>
+                <div class="grade-violation-reason">${item.reason}</div>
+              </div>`;
+          });
+
+          items.warning.forEach(item => {
+            categoriesHtml += `
+              <div class="grade-violation-item warning">
+                <div class="grade-violation-title">⚠ ${item.check}</div>
+                <div class="grade-violation-reason">${item.reason}</div>
+              </div>`;
+          });
+
+          items.critical.forEach(item => {
+            categoriesHtml += `
+              <div class="grade-violation-item critical">
+                <div class="grade-violation-title">✗ ${item.check}</div>
+                <div class="grade-violation-reason">${item.reason}</div>
+              </div>`;
+          });
+        }
+
+        categoriesHtml += '</div></div>';
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Chat request failed');
-      }
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Chat failed');
-      }
-
-      return data.data;
+      document.getElementById('violations-container').innerHTML = categoriesHtml;
+      resultsDiv.style.display = 'block';
+      resultsDiv.scrollIntoView({ behavior: 'smooth' });
     }
 
     function displayAnalysis(analysis) {
@@ -1341,6 +1432,11 @@ Please provide helpful, specific advice that references the brand personality, v
       container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    function enableChat() {
+      document.getElementById('chat-input').disabled = false;
+      document.getElementById('send-chat-btn').disabled = false;
+    }
+
     function showMessage(text, type) {
       const messageDiv = document.getElementById('message');
       messageDiv.className = `message ${type}`;
@@ -1352,6 +1448,185 @@ Please provide helpful, specific advice that references the brand personality, v
           messageDiv.style.display = 'none';
         }, 4000);
       }
+    }
+
+    function enableChat() {
+      const welcome = document.getElementById('chat-welcome');
+      if (welcome) {
+        welcome.remove();
+      }
+      
+      const apiKeyInput = document.getElementById('api-key-input');
+      const hasApiKey = apiKeyInput && apiKeyInput.value.trim().length > 0;
+      
+      document.getElementById('chat-input').disabled = false;
+      document.getElementById('send-chat-btn').disabled = false;
+      
+      const statusBadge = document.getElementById('chat-status-badge');
+      
+      if (hasApiKey) {
+        document.getElementById('chat-status-text').innerHTML = '✅ AI Brand Assistant is ready! Ask me anything about your brand guidelines or designs.';
+        statusBadge.style.background = '#d4edda';
+        statusBadge.style.color = '#155724';
+        statusBadge.textContent = '✓ Ready';
+        
+        if (chatHistory.length === 0) {
+          const brandName = parsedGuidelines.aiUnderstanding?.brandEssence || 'your brand';
+          addChatMessage('ai', `Hi! 👋 I've learned all about ${brandName}. I can help you understand your brand guidelines and answer any design questions. What would you like to know?`);
+        }
+      } else {
+        document.getElementById('chat-status-text').innerHTML = '⚠️ Chat is enabled, but add your API key in "Upload Guidelines" tab for full functionality.';
+        statusBadge.style.background = '#fff3cd';
+        statusBadge.style.color = '#856404';
+        statusBadge.textContent = '⚠️ API Key Needed';
+      }
+    }
+
+    async function sendChatMessage() {
+      const input = document.getElementById('chat-input');
+      const message = input.value.trim();
+      
+      if (!message) return;
+      
+      if (!parsedGuidelines || !parsedGuidelines.aiUnderstanding) {
+        addChatMessage('system', 'Please upload brand guidelines with AI analysis enabled first (in the Upload Guidelines tab).');
+        return;
+      }
+      
+      const apiKeyInput = document.getElementById('api-key-input');
+      const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+      
+      if (!apiKey) {
+        input.value = '';
+        addChatMessage('user', message);
+        addChatMessage('system', '🔑 To use AI chat, please add your Anthropic API key in the "Upload Guidelines" tab.');
+        input.value = message;
+        return;
+      }
+      
+      addChatMessage('user', message);
+      input.value = '';
+      
+      const loadingId = 'loading-' + Date.now();
+      addChatMessage('ai', '⏳ Thinking...', loadingId);
+      
+      try {
+        const response = await chatWithAI(message, apiKey);
+        
+        const loadingMsg = document.getElementById(loadingId);
+        if (loadingMsg) loadingMsg.remove();
+        
+        addChatMessage('ai', response);
+      } catch (error) {
+        console.error('Chat error:', error);
+        
+        const loadingMsg = document.getElementById(loadingId);
+        if (loadingMsg) loadingMsg.remove();
+        
+        if (error.message.includes('401') || error.message.includes('authentication')) {
+          addChatMessage('system', '❌ Invalid API key. Please check your Anthropic API key in the Upload Guidelines tab.');
+        } else {
+          addChatMessage('system', '❌ Error: ' + error.message);
+        }
+      }
+    }
+
+    function addChatMessage(type, message, id) {
+      const container = document.getElementById('chat-messages');
+      
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'chat-message ' + type;
+      msgDiv.style.padding = '12px';
+      msgDiv.style.marginBottom = '8px';
+      msgDiv.style.borderRadius = '6px';
+      msgDiv.style.fontSize = '11px';
+      msgDiv.style.lineHeight = '1.6';
+      
+      if (type === 'user') {
+        msgDiv.style.background = '#667eea';
+        msgDiv.style.color = 'white';
+        msgDiv.style.marginLeft = '20px';
+        msgDiv.style.textAlign = 'right';
+      } else if (type === 'ai') {
+        msgDiv.style.background = '#f0f2ff';
+        msgDiv.style.color = '#333';
+        msgDiv.style.marginRight = '20px';
+      } else {
+        msgDiv.style.background = '#fff3cd';
+        msgDiv.style.color = '#856404';
+      }
+      
+      if (id) msgDiv.id = id;
+      msgDiv.textContent = message;
+      container.appendChild(msgDiv);
+      container.scrollTop = container.scrollHeight;
+      
+      if (type !== 'system') {
+        chatHistory.push({ 
+          role: type === 'user' ? 'user' : 'assistant', 
+          content: message 
+        });
+      }
+    }
+
+    async function chatWithAI(userMessage, apiKey) {
+      let endpoint = document.getElementById('api-endpoint-input').value.trim();
+      
+      if (!endpoint || endpoint === 'https://your-backend.vercel.app' || endpoint.includes('YOUR-API-URL')) {
+        throw new Error('API endpoint URL is required.');
+      }
+      
+      if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+        endpoint = 'https://' + endpoint;
+      }
+      
+      endpoint = endpoint.replace(/\/$/, '');
+
+      let contextPrompt = `You are an expert brand design consultant. The user is asking you about their brand guidelines.
+
+BRAND INFORMATION:
+Brand Essence: "${parsedGuidelines.aiUnderstanding.brandEssence || ''}"
+Brand Personality: ${parsedGuidelines.aiUnderstanding.brandPersonality || ''}
+Visual Style: ${parsedGuidelines.aiUnderstanding.visualStyle || ''}
+Target Audience: ${parsedGuidelines.aiUnderstanding.targetAudience || ''}
+
+User's Question: ${userMessage}
+
+Provide helpful, specific advice that references the brand. Be conversational and professional.`;
+
+      const messages = chatHistory.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
+      messages.push({
+        role: 'user',
+        content: contextPrompt
+      });
+
+      const response = await fetch(`${endpoint}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: messages,
+          apiKey: apiKey
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Chat request failed');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Chat failed');
+      }
+
+      return data.data;
     }
 
     function escapeHtml(text) {
