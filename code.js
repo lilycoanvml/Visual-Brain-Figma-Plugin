@@ -30,7 +30,7 @@ figma.ui.onmessage = async (msg) => {
       let cleanEndpoint = endpoint.trim().replace(/\/$/, '');
       
       console.log('📤 Calling:', cleanEndpoint + '/api/chat-with-pdf');
-
+      
       const response = await fetch(`${cleanEndpoint}/api/chat-with-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,7 +74,7 @@ figma.ui.onmessage = async (msg) => {
       let cleanEndpoint = endpoint.trim().replace(/\/$/, '');
       
       console.log('📤 Calling:', cleanEndpoint + '/api/compliance-grade');
-
+      
       const response = await fetch(`${cleanEndpoint}/api/compliance-grade`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -192,20 +192,22 @@ figma.ui.onmessage = async (msg) => {
       gradeData.fonts = extractFonts(node);
       gradeData.textContent = extractText(node);
 
-      // Capture screenshot
+      // Capture screenshot - OPTIMIZED for smaller size
       try {
         console.log('📸 Exporting frame');
-        const bytes = await node.exportAsync({
-          format: 'PNG',
-          constraint: { type: 'SCALE', value: 0.5 }
+        
+        // USE JPG AT 0.25 SCALE (EVEN SMALLER) - THIS IS THE FIX!
+        const bytes = await node.exportAsync({ 
+          format: 'JPG',
+          constraint: { type: 'SCALE', value: 0.25 }
         });
         
         console.log('✅ Export complete:', bytes.length, 'bytes');
         
         const base64 = bytesToBase64(bytes);
-        gradeData.screenshot = `data:image/png;base64,${base64}`;
+        gradeData.screenshot = `data:image/jpeg;base64,${base64}`;
         
-        console.log('✅ Base64 conversion complete');
+        console.log('✅ Base64 conversion complete, size:', base64.length);
       } catch (e) {
         console.error('❌ Screenshot error:', e);
       }
@@ -269,9 +271,11 @@ figma.ui.onmessage = async (msg) => {
       for (const node of selection) {
         try {
           console.log('📸 Exporting:', node.name);
+          
+          // Optimized export
           const bytes = await node.exportAsync({
-            format: 'PNG',
-            constraint: { type: 'SCALE', value: 0.5 }
+            format: 'JPG',
+            constraint: { type: 'SCALE', value: 0.25 }
           });
           
           const base64 = bytesToBase64(bytes);
