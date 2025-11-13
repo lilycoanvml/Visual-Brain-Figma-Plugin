@@ -1,7 +1,11 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/:path*", "destination": "/api" }
+    { "source": "/", "destination": "/api" },
+    { "source": "/chat-with-pdf", "destination": "/api/chat-with-pdf" },
+    { "source": "/compliance-grade", "destination": "/api/compliance-grade" },
+    { "source": "/analyze-guidelines", "destination": "/api/analyze-guidelines" },
+    { "source": "/analyze-frames", "destination": "/api/analyze-frames" }
   ],
   "functions": {
     "api/index.js": {
