@@ -1,4 +1,3 @@
-console.log('bytesToBase64 function:', typeof bytesToBase64);
 // Brand Guidelines Checker - Figma Plugin Code
 figma.showUI(__html__, { width: 450, height: 650, themeColors: true });
 
@@ -75,8 +74,8 @@ figma.ui.onmessage = async (msg) => {
       let cleanEndpoint = endpoint.trim().replace(/\/$/, '');
       
       console.log('📤 Calling:', cleanEndpoint + '/api/compliance-grade');
-      
-      const response = await fetch(`${cleanEndpoint}/chat-with-pdf`, {
+
+      const response = await fetch(`${cleanEndpoint}/compliance-grade`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -196,9 +195,9 @@ figma.ui.onmessage = async (msg) => {
       // Capture screenshot
       try {
         console.log('📸 Exporting frame');
-        const bytes = await node.exportAsync({ 
-          format: 'PNG', 
-          constraint: { type: 'SCALE', value: 1 }
+        const bytes = await node.exportAsync({
+          format: 'PNG',
+          constraint: { type: 'SCALE', value: 0.5 }
         });
         
         console.log('✅ Export complete:', bytes.length, 'bytes');
@@ -272,7 +271,7 @@ figma.ui.onmessage = async (msg) => {
           console.log('📸 Exporting:', node.name);
           const bytes = await node.exportAsync({
             format: 'PNG',
-            constraint: { type: 'SCALE', value: 1 }
+            constraint: { type: 'SCALE', value: 0.5 }
           });
           
           const base64 = bytesToBase64(bytes);
