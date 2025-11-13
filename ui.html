@@ -1732,7 +1732,7 @@
       }
     }
 
-    // ========== CHAT WITH AI (SENDS ACTUAL PDF) ==========
+    // ========== CHAT WITH AI (CALLS PLUGIN, NOT API DIRECTLY) ==========
     async function chatWithAI(userMessage, apiKey, pdfBase64, pdfName) {
       let endpoint = document.getElementById('api-endpoint-input').value.trim();
       
@@ -1746,8 +1746,6 @@
       
       endpoint = endpoint.replace(/\/$/, '');
 
-      const aiData = parsedGuidelines?.aiUnderstanding || {};
-      
       // Build a shorter context prompt
       let contextPrompt = `You are an expert brand design consultant helping with brand guidelines.
 
@@ -1765,38 +1763,43 @@ Answer based on the uploaded brand guidelines document. Be specific and referenc
         content: contextPrompt
       });
 
-      console.log('💬 Sending chat with PDF:', pdfName, 'Size:', pdfBase64 ? Math.round(pdfBase64.length / 1024) + 'KB' : 'N/A');
+      console.log('💬 Sending chat request to PLUGIN (bypasses CORS)');
+      console.log('📄 PDF:', pdfName, 'Size:', pdfBase64 ? Math.round(pdfBase64.length / 1024) + 'KB' : 'N/A');
 
-      try {
-        const response = await fetch(`${endpoint}/api/chat-with-pdf`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+      // Send to PLUGIN, not directly to API (bypasses CORS)
+      return new Promise((resolve, reject) => {
+        // Set up listener for response
+        const messageHandler = (event) => {
+          const msg = event.data.pluginMessage;
+          if (msg.type === 'chat-response') {
+            window.removeEventListener('message', messageHandler);
+            resolve(msg.response);
+          } else if (msg.type === 'chat-error') {
+            window.removeEventListener('message', messageHandler);
+            reject(new Error(msg.error));
+          }
+        };
+        
+        window.addEventListener('message', messageHandler);
+        
+        // Send request to plugin
+        parent.postMessage({
+          pluginMessage: {
+            type: 'chat-with-pdf',
             messages: messages,
             apiKey: apiKey,
             pdfBase64: pdfBase64,
-            pdfName: pdfName
-          })
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error('Chat request failed: ' + response.statusText + ' - ' + errorText);
-        }
-
-        const data = await response.json();
+            pdfName: pdfName,
+            endpoint: endpoint
+          }
+        }, '*');
         
-        if (!data.success) {
-          throw new Error(data.error || 'Chat failed');
-        }
-
-        return data.data;
-      } catch (error) {
-        console.error('Chat error:', error);
-        throw error;
-      }
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          window.removeEventListener('message', messageHandler);
+          reject(new Error('Chat request timed out'));
+        }, 30000);
+      });
     }
 
     // ========== UTILITY FUNCTIONS ==========
