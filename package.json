@@ -1,22 +1,12 @@
 {
-  "type": "module",
-  "name": "brand-guidelines-api",
+  "name": "iterated-visual-ai-plugin",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js"
+    "dev": "vercel dev"
   },
-  "keywords": ["brand", "guidelines", "figma", "api"],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "@anthropic-ai/sdk": "^0.20.0"
-  },
-  "description": "Backend API for Brand Guidelines Checker Figma Plugin",
-  "engines": {
-    "node": "22.x"
+  "@anthropic-ai/sdk": "^0.68.0"
   }
 }
