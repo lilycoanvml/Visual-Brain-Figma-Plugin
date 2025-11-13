@@ -6,21 +6,27 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
+  
   // Handle OPTIONS preflight
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // Normalize path - remove query string and handle both /api/* and /* paths
+  // Normalize path - remove query string
+  // In catch-all routes, req.url will be like '/chat-with-pdf' not '/api/chat-with-pdf'
   let path = req.url.split('?')[0];
 
-  console.log('📍 Request:', req.method, path);
+  // Ensure path starts with /
+  if (!path.startsWith('/')) {
+    path = '/' + path;
+  }
+
+  console.log('📍 Request:', req.method, path, 'Query:', req.query);
 
   // ===== HEALTH CHECK =====
   if (req.method === 'GET' && (path === '/' || path === '/api' || path === '/api/')) {
-    res.status(200).json({
+    res.status(200).json({ 
       status: 'API Running',
       endpoints: [
         '/api/chat-with-pdf',
@@ -33,7 +39,7 @@ export default async function handler(req, res) {
   }
 
   // ===== CHAT WITH PDF =====
-  if ((path === '/api/chat-with-pdf' || path === '/chat-with-pdf') && req.method === 'POST') {
+  if (path === '/chat-with-pdf' && req.method === 'POST') {
     try {
       console.log('💬 Chat request');
       const { messages, apiKey, pdfBase64, pdfName } = req.body;
@@ -44,7 +50,7 @@ export default async function handler(req, res) {
       }
 
       const anthropic = new Anthropic({ apiKey: apiKey.trim() });
-
+      
       const messageContent = [
         {
           type: 'document',
@@ -59,12 +65,12 @@ export default async function handler(req, res) {
           text: `Brand guidelines PDF: "${pdfName}". Answer questions based on this document.`
         }
       ];
-
+      
       const lastMessage = messages[messages.length - 1];
       if (typeof lastMessage.content === 'string') {
         messageContent.push({ type: 'text', text: lastMessage.content });
       }
-
+      
       const conversationMessages = messages.slice(0, -1);
       conversationMessages.push({
         role: 'user',
@@ -88,7 +94,7 @@ export default async function handler(req, res) {
   }
 
   // ===== COMPLIANCE GRADE =====
-  if ((path === '/api/compliance-grade' || path === '/compliance-grade') && req.method === 'POST') {
+  if (path === '/compliance-grade' && req.method === 'POST') {
     try {
       console.log('📊 Compliance grade');
       const { frameData, guidelinesContent, aiUnderstanding, apiKey, pdfBase64 } = req.body;
@@ -101,7 +107,7 @@ export default async function handler(req, res) {
       const anthropic = new Anthropic({ apiKey: apiKey.trim() });
 
       const messageContent = [];
-
+      
       // Add PDF
       if (pdfBase64) {
         messageContent.push({
@@ -117,7 +123,7 @@ export default async function handler(req, res) {
           text: 'Brand guidelines PDF above. Grade design against these.'
         });
       }
-
+      
       messageContent.push({
         type: 'text',
         text: `Grade this design against brand guidelines.
@@ -138,7 +144,7 @@ Respond with JSON array:
         if (imageBase64.includes('base64,')) {
           imageBase64 = imageBase64.split('base64,')[1];
         }
-
+        
         messageContent.push({
           type: 'image',
           source: {
@@ -163,7 +169,7 @@ Respond with JSON array:
       if (!jsonMatch) {
         throw new Error('Could not parse JSON');
       }
-
+      
       const json = JSON.parse(jsonMatch[0]);
 
       const organized = {
@@ -182,7 +188,7 @@ Respond with JSON array:
   }
 
   // ===== ANALYZE GUIDELINES =====
-  if ((path === '/api/analyze-guidelines' || path === '/analyze-guidelines') && req.method === 'POST') {
+  if (path === '/analyze-guidelines' && req.method === 'POST') {
     try {
       const { content, apiKey, pdfBase64 } = req.body;
 
@@ -192,9 +198,9 @@ Respond with JSON array:
       }
 
       const anthropic = new Anthropic({ apiKey: apiKey.trim() });
-
+      
       const messageContent = [];
-
+      
       if (pdfBase64) {
         messageContent.push({
           type: 'document',
@@ -205,7 +211,7 @@ Respond with JSON array:
           }
         });
       }
-
+      
       messageContent.push({
         type: 'text',
         text: `Analyze brand guidelines. Extract: brandEssence, brandPersonality, visualStyle, coreValues, targetAudience, colorPsychology, typographyCharacter, imageryStyle, designPrinciples.
@@ -224,7 +230,7 @@ Respond ONLY with JSON.`
       const text = response.content[0]?.text || '';
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       const json = JSON.parse(jsonMatch[0]);
-
+      
       res.status(200).json({ success: true, data: json });
 
     } catch (error) {
@@ -234,7 +240,7 @@ Respond ONLY with JSON.`
   }
 
   // ===== ANALYZE FRAMES =====
-  if ((path === '/api/analyze-frames' || path === '/analyze-frames') && req.method === 'POST') {
+  if (path === '/analyze-frames' && req.method === 'POST') {
     try {
       const { frameImages, guidelines, apiKey, pdfBase64 } = req.body;
 
@@ -246,7 +252,7 @@ Respond ONLY with JSON.`
       const anthropic = new Anthropic({ apiKey: apiKey.trim() });
 
       const messageContent = [];
-
+      
       if (pdfBase64) {
         messageContent.push({
           type: 'document',
@@ -261,7 +267,7 @@ Respond ONLY with JSON.`
           text: 'Brand guidelines PDF above.'
         });
       }
-
+      
       messageContent.push({
         type: 'text',
         text: `Analyze these designs against brand guidelines.
@@ -298,7 +304,7 @@ Provide JSON: {
       const text = response.content[0]?.text || '';
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       const analysis = JSON.parse(jsonMatch[0]);
-
+      
       res.status(200).json({ success: true, data: analysis });
 
     } catch (error) {
