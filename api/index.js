@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+// Brand Guidelines API Handler - v2.0
 export default async function handler(req, res) {
   // CORS headers for ALL responses
   res.setHeader('Access-Control-Allow-Origin', '*');
