@@ -13,10 +13,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  const path = req.url;
+  // Normalize path - remove query string and handle both /api/* and /* paths
+  let path = req.url.split('?')[0];
 
   // ===== HEALTH CHECK =====
-  if (req.method === 'GET' && path === '/') {
+  if (req.method === 'GET' && (path === '/' || path === '/api')) {
     res.status(200).json({ 
       status: 'API Running',
       endpoints: [
@@ -30,7 +31,7 @@ export default async function handler(req, res) {
   }
 
   // ===== CHAT WITH PDF =====
-  if (path === '/api/chat-with-pdf' && req.method === 'POST') {
+  if ((path === '/api/chat-with-pdf' || path === '/chat-with-pdf') && req.method === 'POST') {
     try {
       console.log('💬 Chat request');
       const { messages, apiKey, pdfBase64, pdfName } = req.body;
@@ -85,7 +86,7 @@ export default async function handler(req, res) {
   }
 
   // ===== COMPLIANCE GRADE =====
-  if (path === '/api/compliance-grade' && req.method === 'POST') {
+  if ((path === '/api/compliance-grade' || path === '/compliance-grade') && req.method === 'POST') {
     try {
       console.log('📊 Compliance grade');
       const { frameData, guidelinesContent, aiUnderstanding, apiKey, pdfBase64 } = req.body;
@@ -179,7 +180,7 @@ Respond with JSON array:
   }
 
   // ===== ANALYZE GUIDELINES =====
-  if (path === '/api/analyze-guidelines' && req.method === 'POST') {
+  if ((path === '/api/analyze-guidelines' || path === '/analyze-guidelines') && req.method === 'POST') {
     try {
       const { content, apiKey, pdfBase64 } = req.body;
 
@@ -231,7 +232,7 @@ Respond ONLY with JSON.`
   }
 
   // ===== ANALYZE FRAMES =====
-  if (path === '/api/analyze-frames' && req.method === 'POST') {
+  if ((path === '/api/analyze-frames' || path === '/analyze-frames') && req.method === 'POST') {
     try {
       const { frameImages, guidelines, apiKey, pdfBase64 } = req.body;
 
