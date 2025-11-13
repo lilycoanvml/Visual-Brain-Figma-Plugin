@@ -1,12 +1,4 @@
 {
-  "version": 2,
-  "rewrites": [
-    { "source": "/", "destination": "/api" },
-    { "source": "/chat-with-pdf", "destination": "/api/chat-with-pdf" },
-    { "source": "/compliance-grade", "destination": "/api/compliance-grade" },
-    { "source": "/analyze-guidelines", "destination": "/api/analyze-guidelines" },
-    { "source": "/analyze-frames", "destination": "/api/analyze-frames" }
-  ],
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
@@ -15,7 +7,7 @@
   },
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Credentials", "value": "true" },
         { "key": "Access-Control-Allow-Origin", "value": "*" },

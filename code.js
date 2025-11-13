@@ -30,8 +30,8 @@ figma.ui.onmessage = async (msg) => {
       let cleanEndpoint = endpoint.trim().replace(/\/$/, '');
       
       console.log('📤 Calling:', cleanEndpoint + '/api/chat-with-pdf');
-      
-      const response = await fetch(`${cleanEndpoint}/chat-with-pdf`, {
+
+      const response = await fetch(`${cleanEndpoint}/api/chat-with-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -75,7 +75,7 @@ figma.ui.onmessage = async (msg) => {
       
       console.log('📤 Calling:', cleanEndpoint + '/api/compliance-grade');
 
-      const response = await fetch(`${cleanEndpoint}/compliance-grade`, {
+      const response = await fetch(`${cleanEndpoint}/api/compliance-grade`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
