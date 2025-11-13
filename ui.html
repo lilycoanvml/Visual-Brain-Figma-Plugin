@@ -740,6 +740,21 @@
       const msg = event.data.pluginMessage;
       if (!msg) return;
       
+      // NEW: Handle chat response from plugin
+      if (msg.type === 'chat-response') {
+        const loadingMsg = document.querySelector('.chat-message[id^="loading-"]');
+        if (loadingMsg) loadingMsg.remove();
+        addChatMessage('ai', msg.response);
+        return;
+      }
+      
+      if (msg.type === 'chat-error') {
+        const loadingMsg = document.querySelector('.chat-message[id^="loading-"]');
+        if (loadingMsg) loadingMsg.remove();
+        addChatMessage('system', '❌ Error: ' + msg.error);
+        return;
+      }
+      
       // NEW HANDLER: AI analysis with images
       if (msg.type === 'analysis-ready-for-ai') {
         console.log('📸 Received frames for AI analysis:', msg.frameImages.length);
@@ -817,7 +832,7 @@
       }
     };
 
-    // ========== NEW: AI ANALYSIS HANDLER ==========
+    // ========== NEW: AI ANALYSIS HANDLER (WITH PDF) ==========
     async function handleAIAnalysis(msg) {
       const btn = document.getElementById('analyze-button');
       
@@ -841,19 +856,21 @@
           cleanEndpoint = cleanEndpoint.slice(0, -1);
         }
         
-        btn.innerHTML = '🤖 AI analyzing images... <span class="loading-spinner"></span>';
+        btn.innerHTML = '🤖 AI analyzing with PDF + images... <span class="loading-spinner"></span>';
         
         console.log('📤 Calling backend API:', cleanEndpoint + '/api/analyze-frames');
         console.log('📸 Sending', msg.frameImages.length, 'images');
+        console.log('📄 Including PDF:', uploadedPDFName, uploadedPDFBase64 ? 'Yes' : 'No');
         
-        // Call backend API with images
+        // Call backend API with images AND PDF
         const response = await fetch(`${cleanEndpoint}/api/analyze-frames`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             frameImages: msg.frameImages,
             guidelines: msg.guidelines,
-            apiKey: apiKey
+            apiKey: apiKey,
+            pdfBase64: uploadedPDFBase64  // INCLUDE PDF
           })
         });
         
@@ -1400,7 +1417,8 @@
             typography: parsedGuidelines.typography || {},
             spacing: parsedGuidelines.spacing || {},
             apiKey: apiKey,
-            endpoint: cleanEndpoint
+            endpoint: cleanEndpoint,
+            pdfBase64: uploadedPDFBase64  // INCLUDE PDF
           } 
         }, '*');
 
@@ -1714,7 +1732,7 @@
       }
     }
 
-    // ========== CHAT WITH AI (UPDATED) ==========
+    // ========== CHAT WITH AI (SENDS ACTUAL PDF) ==========
     async function chatWithAI(userMessage, apiKey, pdfBase64, pdfName) {
       let endpoint = document.getElementById('api-endpoint-input').value.trim();
       
@@ -1728,28 +1746,16 @@
       
       endpoint = endpoint.replace(/\/$/, '');
 
-      // Build context with safe checks
       const aiData = parsedGuidelines?.aiUnderstanding || {};
       
-      // Include PDF info in prompt, but DON'T send the actual PDF (too large)
-      let contextPrompt = `You are an expert brand design consultant. The user is asking you about their brand guidelines${pdfName ? ' from their uploaded document "' + pdfName + '"' : ''}.
-
-BRAND INFORMATION (extracted from their guidelines):
-Brand Essence: "${aiData.brandEssence || 'Not specified'}"
-Brand Personality: ${aiData.brandPersonality || 'Not specified'}
-Visual Style: ${aiData.visualStyle || 'Not specified'}
-Target Audience: ${aiData.targetAudience || 'Not specified'}
-Core Values: ${aiData.coreValues || 'Not specified'}
-Color Psychology: ${aiData.colorPsychology || 'Not specified'}
-Typography Character: ${aiData.typographyCharacter || 'Not specified'}
-Imagery Style: ${aiData.imageryStyle || 'Not specified'}
-Design Principles: ${aiData.designPrinciples || 'Not specified'}
+      // Build a shorter context prompt
+      let contextPrompt = `You are an expert brand design consultant helping with brand guidelines.
 
 User's Question: ${userMessage}
 
-Provide helpful, specific advice that references their brand guidelines. Be conversational and professional. Answer based on the brand information above.`;
+Answer based on the uploaded brand guidelines document. Be specific and reference the guidelines.`;
 
-      const messages = chatHistory.slice(-10).map(msg => ({
+      const messages = chatHistory.slice(-6).map(msg => ({
         role: msg.role,
         content: msg.content
       }));
@@ -1759,33 +1765,38 @@ Provide helpful, specific advice that references their brand guidelines. Be conv
         content: contextPrompt
       });
 
-      console.log('💬 Sending chat request (using extracted brand data, not PDF)');
+      console.log('💬 Sending chat with PDF:', pdfName, 'Size:', pdfBase64 ? Math.round(pdfBase64.length / 1024) + 'KB' : 'N/A');
 
-      const response = await fetch(`${endpoint}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: messages,
-          apiKey: apiKey,
-          // NOTE: Not sending pdfBase64 - too large!
-          guidelinesContext: aiData
-        })
-      });
+      try {
+        const response = await fetch(`${endpoint}/api/chat-with-pdf`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messages: messages,
+            apiKey: apiKey,
+            pdfBase64: pdfBase64,
+            pdfName: pdfName
+          })
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Chat request failed');
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error('Chat request failed: ' + response.statusText + ' - ' + errorText);
+        }
+
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Chat failed');
+        }
+
+        return data.data;
+      } catch (error) {
+        console.error('Chat error:', error);
+        throw error;
       }
-
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Chat failed');
-      }
-
-      return data.data;
     }
 
     // ========== UTILITY FUNCTIONS ==========

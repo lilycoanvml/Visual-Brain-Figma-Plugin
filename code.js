@@ -3,16 +3,6 @@ figma.showUI(__html__, { width: 450, height: 650, themeColors: true });
 
 let brandGuidelines = null;
 
-// Helper function to convert Uint8Array to base64
-function uint8ArrayToBase64(bytes) {
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
 // Helper to convert RGB to Hex
 function rgbToHex(r, g, b) {
   return '#' + [r, g, b].map(x => {
@@ -21,14 +11,83 @@ function rgbToHex(r, g, b) {
   }).join('');
 }
 
+// FIXED: Proper base64 conversion with chunking
+function bytesToBase64(bytes) {
+  const chunkSize = 0x8000; // 32KB chunks
+  let base64 = '';
+  
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize);
+    base64 += String.fromCharCode.apply(null, Array.from(chunk));
+  }
+  
+  return btoa(base64);
+}
+
 figma.ui.onmessage = async (msg) => {
+  
+  // === CHAT WITH PDF (BYPASS CORS) ===
+  if (msg.type === 'chat-with-pdf') {
+    try {
+      console.log('💬 Chat request from UI, making API call from plugin...');
+      
+      const { messages, apiKey, pdfBase64, pdfName, endpoint } = msg;
+      
+      // Clean endpoint
+      let cleanEndpoint = endpoint.trim();
+      if (cleanEndpoint.endsWith('/')) {
+        cleanEndpoint = cleanEndpoint.slice(0, -1);
+      }
+      
+      console.log('📤 Calling:', cleanEndpoint + '/api/chat-with-pdf');
+      console.log('📄 PDF Size:', Math.round(pdfBase64.length / 1024) + 'KB');
+      
+      const response = await fetch(`${cleanEndpoint}/api/chat-with-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: messages,
+          apiKey: apiKey,
+          pdfBase64: pdfBase64,
+          pdfName: pdfName
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error('API error: ' + response.statusText + ' - ' + errorText);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Chat failed');
+      }
+      
+      console.log('✅ Chat response received');
+      
+      figma.ui.postMessage({
+        type: 'chat-response',
+        response: data.data
+      });
+      
+    } catch (error) {
+      console.error('❌ Chat error:', error);
+      figma.ui.postMessage({
+        type: 'chat-error',
+        error: error.message
+      });
+    }
+  }
   
   // === GRADE FRAME WITH IMAGE ANALYSIS ===
   if (msg.type === 'grade-frame') {
     try {
       console.log('🤖 Processing grade request with image analysis...');
       
-      const { frameData, guidelinesContent, aiUnderstanding, colors, typography, spacing, apiKey, endpoint } = msg;
+      const { frameData, guidelinesContent, aiUnderstanding, colors, typography, spacing, apiKey, endpoint, pdfBase64 } = msg;
       
       // Clean endpoint URL
       let cleanEndpoint = endpoint.trim();
@@ -38,6 +97,7 @@ figma.ui.onmessage = async (msg) => {
       
       console.log('📤 Sending to:', cleanEndpoint + '/api/compliance-grade');
       console.log('📸 Screenshot included:', !!frameData.screenshot);
+      console.log('📄 PDF included:', !!pdfBase64);
       
       // Make the API call from the plugin (server-side, not from iframe)
       const response = await fetch(`${cleanEndpoint}/api/compliance-grade`, {
@@ -52,7 +112,8 @@ figma.ui.onmessage = async (msg) => {
           colors: colors,
           typography: typography,
           spacing: spacing,
-          apiKey: apiKey
+          apiKey: apiKey,
+          pdfBase64: pdfBase64  // INCLUDE PDF
         })
       });
 
@@ -196,23 +257,23 @@ figma.ui.onmessage = async (msg) => {
       gradeData.textContent = extractText(node);
       gradeData.images = new Array(countImages(node)).fill('Image element detected');
 
-      // === CRITICAL: Capture screenshot with HIGHER resolution ===
+      // === CRITICAL: Capture screenshot ===
       try {
         console.log('📸 Exporting frame as PNG...');
         const bytes = await node.exportAsync({ 
           format: 'PNG', 
-          constraint: { type: 'SCALE', value: 2 } // Higher quality for AI analysis
+          constraint: { type: 'SCALE', value: 1 }
         });
         
         console.log('✅ Export successful, size:', bytes.length, 'bytes');
         
-        // Convert to base64
-        const base64 = uint8ArrayToBase64(bytes);
+        // Use the helper function
+        const base64 = bytesToBase64(bytes);
         gradeData.screenshot = `data:image/png;base64,${base64}`;
         
         console.log('✅ Screenshot converted to base64, length:', base64.length);
       } catch (e) {
-        console.error('❌ Screenshot error:', e.message);
+        console.error('❌ Screenshot error:', e);
         figma.ui.postMessage({ 
           type: 'error', 
           message: 'Failed to capture screenshot: ' + e.message
@@ -286,10 +347,12 @@ figma.ui.onmessage = async (msg) => {
           console.log('📸 Exporting:', node.name);
           const bytes = await node.exportAsync({
             format: 'PNG',
-            constraint: { type: 'SCALE', value: 2 }
+            constraint: { type: 'SCALE', value: 1 }
           });
           
-          const base64 = uint8ArrayToBase64(bytes);
+          // Use helper function
+          const base64 = bytesToBase64(bytes);
+          
           frameImages.push({
             name: node.name,
             type: node.type,
