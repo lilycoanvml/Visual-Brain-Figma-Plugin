@@ -1,5 +1,4 @@
 {
-  "buildCommand": "echo 'Building API endpoints'",
   "functions": {
     "api/*.js": {
       "memory": 1024,
