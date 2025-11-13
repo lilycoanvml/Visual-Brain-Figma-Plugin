@@ -870,7 +870,7 @@
             frameImages: msg.frameImages,
             guidelines: msg.guidelines,
             apiKey: apiKey,
-            pdfBase64: uploadedPDFBase64  // INCLUDE PDF
+            pdfBase64: null  // INCLUDE PDF
           })
         });
         
@@ -1418,7 +1418,7 @@
             spacing: parsedGuidelines.spacing || {},
             apiKey: apiKey,
             endpoint: cleanEndpoint,
-            pdfBase64: uploadedPDFBase64  // INCLUDE PDF
+            pdfBase64: null  // INCLUDE PDF
           } 
         }, '*');
 

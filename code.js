@@ -192,22 +192,23 @@ figma.ui.onmessage = async (msg) => {
       gradeData.fonts = extractFonts(node);
       gradeData.textContent = extractText(node);
 
-      // Capture screenshot - OPTIMIZED for smaller size
+      // Capture screenshot - HEAVILY OPTIMIZED to avoid 413 errors
       try {
         console.log('📸 Exporting frame');
         
-        // USE JPG AT 0.25 SCALE (EVEN SMALLER) - THIS IS THE FIX!
+        // CRITICAL FIX: Use 0.1 scale for MUCH smaller images
+        // This reduces payload size by ~90% compared to 0.25 scale
         const bytes = await node.exportAsync({ 
           format: 'JPG',
-          constraint: { type: 'SCALE', value: 0.25 }
+          constraint: { type: 'SCALE', value: 0.1 }  // REDUCED from 0.25
         });
         
-        console.log('✅ Export complete:', bytes.length, 'bytes');
+        console.log('✅ Export complete:', bytes.length, 'bytes (~' + Math.round(bytes.length/1024) + 'KB)');
         
         const base64 = bytesToBase64(bytes);
         gradeData.screenshot = `data:image/jpeg;base64,${base64}`;
         
-        console.log('✅ Base64 conversion complete, size:', base64.length);
+        console.log('✅ Base64 size:', Math.round(base64.length/1024) + 'KB');
       } catch (e) {
         console.error('❌ Screenshot error:', e);
       }
@@ -268,15 +269,34 @@ figma.ui.onmessage = async (msg) => {
       
       const frameImages = [];
       
-      for (const node of selection) {
+      // CRITICAL FIX: Limit to 3 frames max to prevent payload overflow
+      const framesToAnalyze = selection.slice(0, 3);
+      
+      if (selection.length > 3) {
+        figma.ui.postMessage({ 
+          type: 'error', 
+          message: `Too many frames selected. Analyzing first 3 of ${selection.length} frames to prevent errors.` 
+        });
+      }
+      
+      for (const node of framesToAnalyze) {
         try {
           console.log('📸 Exporting:', node.name);
           
-          // Optimized export
+          // CRITICAL FIX: Use 0.15 scale and limit dimensions
+          // Calculate scale to ensure max dimension is ~400px
+          const maxDimension = Math.max(node.width, node.height);
+          let scale = 0.15;
+          if (maxDimension > 2000) {
+            scale = 400 / maxDimension; // Ensure max dimension is 400px
+          }
+          
           const bytes = await node.exportAsync({
             format: 'JPG',
-            constraint: { type: 'SCALE', value: 0.25 }
+            constraint: { type: 'SCALE', value: scale }
           });
+          
+          console.log('✅ Exported:', node.name, '~' + Math.round(bytes.length/1024) + 'KB');
           
           const base64 = bytesToBase64(bytes);
           
@@ -288,13 +308,24 @@ figma.ui.onmessage = async (msg) => {
             height: node.height
           });
           
-          console.log('✅ Exported:', node.name);
         } catch (error) {
           console.error('Export error for', node.name, ':', error);
         }
       }
 
       console.log(`✅ Exported ${frameImages.length} frames`);
+      
+      // Calculate total payload size
+      const totalSize = frameImages.reduce((sum, img) => sum + img.base64.length, 0);
+      console.log('📦 Total payload size:', Math.round(totalSize/1024) + 'KB');
+      
+      if (totalSize > 5 * 1024 * 1024) { // 5MB warning
+        figma.ui.postMessage({ 
+          type: 'error', 
+          message: 'Payload too large. Please select fewer or smaller frames.' 
+        });
+        return;
+      }
 
       figma.ui.postMessage({ 
         type: 'analysis-ready-for-ai',

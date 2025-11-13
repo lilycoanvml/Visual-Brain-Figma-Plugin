@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-// Brand Guidelines API Handler - v2.0
+// Brand Guidelines API Handler - v2.1 (with payload size fixes)
 export default async function handler(req, res) {
   // CORS headers for ALL responses
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,7 +14,6 @@ export default async function handler(req, res) {
   }
 
   // Normalize path - remove query string
-  // In catch-all routes, req.url will be like '/chat-with-pdf' not '/api/chat-with-pdf'
   let path = req.url.split('?')[0];
 
   // Ensure path starts with /
@@ -249,6 +248,14 @@ Respond ONLY with JSON.`
         return;
       }
 
+      // CRITICAL FIX: Limit number of frames
+      const maxFrames = 3;
+      const framesToAnalyze = frameImages.slice(0, maxFrames);
+      
+      if (frameImages.length > maxFrames) {
+        console.log(`⚠️ Too many frames (${frameImages.length}), limiting to ${maxFrames}`);
+      }
+
       const anthropic = new Anthropic({ apiKey: apiKey.trim() });
 
       const messageContent = [];
@@ -270,7 +277,7 @@ Respond ONLY with JSON.`
       
       messageContent.push({
         type: 'text',
-        text: `Analyze these designs against brand guidelines.
+        text: `Analyze these ${framesToAnalyze.length} design(s) against brand guidelines.
 
 Provide JSON: {
   "summary": "description",
@@ -280,7 +287,8 @@ Provide JSON: {
 }`
       });
 
-      for (const frame of frameImages) {
+      // Add images
+      for (const frame of framesToAnalyze) {
         messageContent.push({
           type: 'image',
           source: {
@@ -295,6 +303,8 @@ Provide JSON: {
         });
       }
 
+      console.log(`📤 Sending ${framesToAnalyze.length} images to Claude API`);
+
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4000,
@@ -308,7 +318,17 @@ Provide JSON: {
       res.status(200).json({ success: true, data: analysis });
 
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+      console.error('❌ Analyze frames error:', error.message);
+      
+      // Better error messages
+      if (error.message.includes('413') || error.message.includes('too large')) {
+        res.status(413).json({ 
+          success: false, 
+          error: 'Payload too large. Try selecting fewer frames or smaller designs.' 
+        });
+      } else {
+        res.status(500).json({ success: false, error: error.message });
+      }
     }
     return;
   }
