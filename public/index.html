@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Brain AI - API</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status { color: #0070f3; font-weight: 500; }
+        .endpoints {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        .endpoint {
+            padding: 8px 0;
+            font-family: 'Courier New', monospace;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Visual Brain AI</h1>
+        <p class="status">API is running</p>
+        <div class="endpoints">
+            <h2>Available Endpoints:</h2>
+            <div class="endpoint">POST /api/chat-with-pdf</div>
+            <div class="endpoint">POST /api/analyze-frames</div>
+            <div class="endpoint">POST /api/analyze-guidelines</div>
+            <div class="endpoint">POST /api/compliance-grade</div>
+        </div>
+        <p style="margin-top: 30px; color: #999; font-size: 14px;">
+            This is the backend API for the Visual Brain AI Figma Plugin.
+        </p>
+    </div>
+</body>
+</html>
