@@ -6,7 +6,8 @@ export default function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   res.status(200).json({
-    status: 'API Running',
+    status: 'Brand Guidelines API - v2',
+    version: '2.0.0',
     endpoints: [
       '/api/chat-with-pdf',
       '/api/compliance-grade',
