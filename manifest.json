@@ -12,7 +12,7 @@
       "https://cdnjs.cloudflare.com",
       "https://api.anthropic.com",
       "https://*.vercel.app",
-      "https://visualbrainaifixed1.vercel.app"
+      "https://iteratedvisualaiplugin.vercel.app/"
     ]
   }
 }
