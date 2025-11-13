@@ -11,8 +11,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '50mb' })); // Increased for images
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Health check
 app.get('/', (req, res) => {
@@ -23,6 +23,7 @@ app.get('/', (req, res) => {
       'GET /health',
       'POST /api/analyze-guidelines',
       'POST /api/compliance-grade',
+      'POST /api/analyze-frames (NEW)',
       'POST /api/chat'
     ]
   });
@@ -30,11 +31,6 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ healthy: true });
-});
-
-// Test endpoint
-app.get('/api/test', (req, res) => {
-  res.json({ test: 'working' });
 });
 
 // Analyze guidelines
@@ -49,7 +45,7 @@ app.post('/api/analyze-guidelines', async (req, res) => {
 
     const anthropic = new Anthropic({ apiKey: apiKey.trim() });
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-1-20250805',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
       messages: [{
         role: 'user',
@@ -69,7 +65,99 @@ ${content.substring(0, 8000)}`
   }
 });
 
-// Compliance grade - THIS IS THE ENDPOINT THAT WAS MISSING
+// NEW ENDPOINT: Analyze frames with images
+app.post('/api/analyze-frames', async (req, res) => {
+  try {
+    console.log('🖼️ Analyze frames with images');
+    const { frameImages, guidelines, apiKey } = req.body;
+
+    if (!apiKey || !frameImages || !guidelines) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields' 
+      });
+    }
+
+    const anthropic = new Anthropic({ apiKey: apiKey.trim() });
+
+    // Build message with text and images
+    const messageContent = [
+      {
+        type: 'text',
+        text: `You are a brand compliance expert. Analyze these Figma designs against the brand guidelines.
+
+BRAND GUIDELINES:
+Brand Essence: ${guidelines.aiUnderstanding?.brandEssence || 'Not specified'}
+Brand Personality: ${guidelines.aiUnderstanding?.brandPersonality || 'Not specified'}
+Visual Style: ${guidelines.aiUnderstanding?.visualStyle || 'Not specified'}
+Colors: ${guidelines.colors?.map(c => c.hex).join(', ') || 'Not specified'}
+Fonts: ${guidelines.typography?.fonts?.map(f => f.family).join(', ') || 'Not specified'}
+
+Analyze the images and provide:
+1. A brief summary of what you see
+2. Any violations of the brand guidelines (be specific)
+3. Strengths that align well with the brand
+4. Suggestions for improvement
+
+Respond with JSON: {
+  "summary": "brief description",
+  "violations": ["issue 1", "issue 2"],
+  "strengths": ["good 1", "good 2"],
+  "suggestions": ["tip 1", "tip 2"]
+}`
+      }
+    ];
+
+    // Add all frame images
+    for (const frame of frameImages) {
+      messageContent.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/png',
+          data: frame.base64
+        }
+      });
+      messageContent.push({
+        type: 'text',
+        text: `Frame: "${frame.name}" (${frame.width}x${frame.height})`
+      });
+    }
+
+    console.log(`📸 Sending ${frameImages.length} images to Claude...`);
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 3000,
+      messages: [{
+        role: 'user',
+        content: messageContent
+      }]
+    });
+
+    const text = response.content[0]?.text || '';
+    console.log('📥 Claude response:', text.substring(0, 200));
+    
+    // Extract JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Could not parse JSON from response');
+    }
+    
+    const analysis = JSON.parse(jsonMatch[0]);
+
+    res.json({ 
+      success: true, 
+      data: analysis
+    });
+
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Compliance grade with images
 app.post('/api/compliance-grade', async (req, res) => {
   try {
     console.log('📊 Compliance grade request');
@@ -84,11 +172,11 @@ app.post('/api/compliance-grade', async (req, res) => {
 
     const anthropic = new Anthropic({ apiKey: apiKey.trim() });
 
-    // Build message content with text and optional image
+    // Build message content with text and image
     const messageContent = [
       {
         type: 'text',
-        text: `Grade this Figma design against brand guidelines. Create a compliance report.
+        text: `Grade this Figma design against brand guidelines. Create a detailed compliance report.
 
 BRAND GUIDELINES:
 ${guidelinesContent.substring(0, 6000)}
@@ -96,17 +184,19 @@ ${guidelinesContent.substring(0, 6000)}
 BRAND PERSONALITY: ${aiUnderstanding?.brandPersonality || 'Unknown'}
 VISUAL STYLE: ${aiUnderstanding?.visualStyle || 'Unknown'}
 
-DESIGN:
+DESIGN PROPERTIES:
 - Frame: ${frameData.frameName}
-- Colors: ${frameData.colors?.map(c => c.hex).join(', ') || 'None'}
-- Fonts: ${frameData.fonts?.join(', ') || 'None'}
+- Detected Colors: ${frameData.colors?.map(c => c.hex).join(', ') || 'None'}
+- Detected Fonts: ${frameData.fonts?.join(', ') || 'None'}
 - Text content: ${frameData.textContent?.map(t => t.content.substring(0, 50)).join('; ') || 'None'}
+
+I'm also providing a screenshot of the actual design. Please analyze BOTH the visual design AND the properties.
 
 Check these categories:
 1. Accessibility
 2. Color Palette
 3. Typography
-4. Layout
+4. Layout & Spacing
 5. Brand Assets
 6. Imagery
 7. Graphic Elements
@@ -114,7 +204,7 @@ Check these categories:
 
 For each check provide: category, check, severity (critical/warning/pass), reason
 
-Respond ONLY with JSON array of objects with: {category, check, severity, reason}`
+Respond ONLY with JSON array: [{category, check, severity, reason}, ...]`
       }
     ];
 
@@ -134,14 +224,18 @@ Respond ONLY with JSON array of objects with: {category, check, severity, reason
             data: imageBase64
           }
         });
-        console.log('📸 Screenshot added to analysis');
+        console.log('📸 Screenshot included in analysis');
       } catch (e) {
         console.log('⚠️ Could not add screenshot:', e.message);
       }
+    } else {
+      console.log('⚠️ No screenshot provided');
     }
 
+    console.log('🤖 Calling Claude API...');
+
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-1-20250805',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 3000,
       messages: [{
         role: 'user',
@@ -150,13 +244,26 @@ Respond ONLY with JSON array of objects with: {category, check, severity, reason
     });
 
     const text = response.content[0]?.text || '';
-    const json = JSON.parse(text.match(/\[[\s\S]*\]/)[0]);
+    console.log('📥 Claude response received:', text.substring(0, 200));
+    
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('Could not parse JSON array from response');
+    }
+    
+    const json = JSON.parse(jsonMatch[0]);
 
     const organized = {
       violations: json.filter(i => i.severity === 'critical'),
       warnings: json.filter(i => i.severity === 'warning'),
       passed: json.filter(i => i.severity === 'pass')
     };
+
+    console.log('✅ Grade complete:', {
+      violations: organized.violations.length,
+      warnings: organized.warnings.length,
+      passed: organized.passed.length
+    });
 
     res.json({ 
       success: true, 
@@ -169,21 +276,60 @@ Respond ONLY with JSON array of objects with: {category, check, severity, reason
   }
 });
 
-// Chat
+// Chat with PDF context
 app.post('/api/chat', async (req, res) => {
   try {
     console.log('💬 Chat request');
-    const { messages, apiKey } = req.body;
+    const { messages, apiKey, pdfBase64, pdfName, guidelinesContext } = req.body;
 
     if (!apiKey || !messages) {
       return res.status(400).json({ success: false, error: 'Missing apiKey or messages' });
     }
 
     const anthropic = new Anthropic({ apiKey: apiKey.trim() });
+    
+    // Build message content
+    const messageContent = [];
+    
+    // Add PDF document if provided
+    if (pdfBase64 && pdfName) {
+      messageContent.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: pdfBase64
+        }
+      });
+      messageContent.push({
+        type: 'text',
+        text: `I've uploaded the brand guidelines PDF: "${pdfName}". Please reference this document when answering questions.`
+      });
+      console.log('📄 PDF included in chat:', pdfName);
+    }
+    
+    // Add the conversation messages
+    const lastMessage = messages[messages.length - 1];
+    if (typeof lastMessage.content === 'string') {
+      messageContent.push({
+        type: 'text',
+        text: lastMessage.content
+      });
+    } else {
+      messageContent.push(...lastMessage.content);
+    }
+    
+    // Prepare conversation history
+    const conversationMessages = messages.slice(0, -1);
+    conversationMessages.push({
+      role: 'user',
+      content: messageContent
+    });
+
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-1-20250805',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1500,
-      messages: messages
+      messages: conversationMessages
     });
 
     const text = response.content[0]?.text || '';

@@ -480,6 +480,13 @@
       text-align: center;
       font-size: 12px;
     }
+    .frame-thumbnail {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 2px solid #ddd;
+    }
   </style>
 </head>
 <body>
@@ -580,7 +587,7 @@
         </div>
       </div>
       <p style="font-size: 11px; color: #666; margin-bottom: 12px;">
-        <span id="chat-status-text">⚠️ AI chat is currently unavailable in Figma plugins due to CORS restrictions. Use the pattern-based analysis features below!</span>
+        <span id="chat-status-text">Upload your brand guidelines with AI analysis enabled to chat about your brand.</span>
       </p>
       
       <div id="chat-messages" style="background: #f8f9fa; border-radius: 8px; padding: 12px; min-height: 200px; max-height: 350px; overflow-y: auto; margin-bottom: 12px;">
@@ -612,7 +619,7 @@
     <div class="section">
       <h3>🔍 Analyze Figma Selection</h3>
       <p style="font-size: 11px; color: #666; margin-bottom: 12px;">
-        Select elements in Figma to check them against your brand guidelines.
+        Select elements in Figma to check them against your brand guidelines with AI visual analysis.
       </p>
       <button class="button" id="analyze-button">🔍 Analyze Selected Elements</button>
       <p style="font-size: 10px; color: #999; margin-top: 8px; text-align: center;">
@@ -688,8 +695,11 @@
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
+    // ========== GLOBAL VARIABLES ==========
     let uploadedFile = null;
     let uploadedFileContent = null;
+    let uploadedPDFBase64 = null; // NEW: Store PDF as base64
+    let uploadedPDFName = null;   // NEW: Store PDF filename
     let parsedGuidelines = null;
     let pdfImages = [];
     let chatHistory = [];
@@ -697,6 +707,7 @@
     let complianceReportData = null;
     let gradeFrameData = null;
 
+    // ========== INITIALIZATION ==========
     window.onload = () => {
       setupDragAndDrop();
       setupTabs();
@@ -724,9 +735,17 @@
       }
     }
 
+    // ========== MESSAGE HANDLERS ==========
     window.onmessage = (event) => {
       const msg = event.data.pluginMessage;
       if (!msg) return;
+      
+      // NEW HANDLER: AI analysis with images
+      if (msg.type === 'analysis-ready-for-ai') {
+        console.log('📸 Received frames for AI analysis:', msg.frameImages.length);
+        handleAIAnalysis(msg);
+        return;
+      }
       
       if (msg.type === 'grade-data-captured') {
         gradeFrameData = msg.frameData;
@@ -798,6 +817,152 @@
       }
     };
 
+    // ========== NEW: AI ANALYSIS HANDLER ==========
+    async function handleAIAnalysis(msg) {
+      const btn = document.getElementById('analyze-button');
+      
+      try {
+        const apiKey = document.getElementById('api-key-input').value.trim();
+        const endpoint = document.getElementById('api-endpoint-input').value.trim();
+        
+        if (!apiKey || !endpoint) {
+          showMessage('API key and endpoint required for AI analysis', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '🔍 Analyze Selected Elements';
+          return;
+        }
+        
+        // Clean endpoint
+        let cleanEndpoint = endpoint;
+        if (!cleanEndpoint.startsWith('http://') && !cleanEndpoint.startsWith('https://')) {
+          cleanEndpoint = 'https://' + cleanEndpoint;
+        }
+        if (cleanEndpoint.endsWith('/')) {
+          cleanEndpoint = cleanEndpoint.slice(0, -1);
+        }
+        
+        btn.innerHTML = '🤖 AI analyzing images... <span class="loading-spinner"></span>';
+        
+        console.log('📤 Calling backend API:', cleanEndpoint + '/api/analyze-frames');
+        console.log('📸 Sending', msg.frameImages.length, 'images');
+        
+        // Call backend API with images
+        const response = await fetch(`${cleanEndpoint}/api/analyze-frames`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            frameImages: msg.frameImages,
+            guidelines: msg.guidelines,
+            apiKey: apiKey
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error('API request failed: ' + response.statusText + ' - ' + errorText);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error || 'Analysis failed');
+        }
+        
+        console.log('✅ AI analysis complete');
+        
+        // Display AI analysis results
+        displayAIAnalysis(data.data, msg.frameImages);
+        
+        btn.disabled = false;
+        btn.innerHTML = '🔍 Analyze Selected Elements';
+        showMessage('AI analysis complete!', 'success');
+        
+      } catch (error) {
+        console.error('❌ AI analysis error:', error);
+        showMessage('AI analysis error: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '🔍 Analyze Selected Elements';
+      }
+    }
+
+    // ========== NEW: DISPLAY AI ANALYSIS ==========
+    function displayAIAnalysis(analysis, frameImages) {
+      const container = document.getElementById('analysis-results');
+      
+      let html = '<div class="analysis-result">';
+      
+      // Show analyzed frames with thumbnails
+      html += `<div class="section">
+        <h3>🎨 AI Visual Analysis <span class="stat-badge">${frameImages.length} frame(s)</span></h3>
+        <p style="color: #666; font-size: 11px; margin-bottom: 12px;">Claude analyzed the visual design against your brand guidelines</p>
+      `;
+      
+      // Show thumbnails
+      if (frameImages.length > 0) {
+        html += '<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">';
+        frameImages.forEach(img => {
+          html += `<div style="text-align: center;">
+            <img src="data:image/png;base64,${img.base64}" class="frame-thumbnail">
+            <div style="font-size: 9px; color: #666; margin-top: 4px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(img.name)}</div>
+          </div>`;
+        });
+        html += '</div>';
+      }
+      
+      html += '</div>';
+      
+      // Summary section
+      if (analysis.summary) {
+        html += `<div class="analysis-card">
+          <h4>📋 Summary</h4>
+          <p style="font-size: 11px; line-height: 1.6; color: #333; white-space: pre-wrap;">${escapeHtml(analysis.summary)}</p>
+        </div>`;
+      }
+
+      // Violations section
+      if (analysis.violations && analysis.violations.length > 0) {
+        html += '<div class="analysis-card">';
+        html += '<h4>⚠️ Issues Found <span class="stat-badge" style="background: #dc3545;">' + analysis.violations.length + '</span></h4>';
+        html += '<ul class="violations-list">';
+        analysis.violations.forEach(v => {
+          const severity = v.severity || 'high';
+          const message = v.message || v;
+          html += `<li class="${severity}">
+            ${escapeHtml(message)}
+            ${v.severity ? '<span class="severity-badge severity-' + v.severity + '">' + v.severity + '</span>' : ''}
+          </li>`;
+        });
+        html += '</ul></div>';
+      }
+
+      // Strengths section
+      if (analysis.strengths && analysis.strengths.length > 0) {
+        html += '<div class="analysis-card">';
+        html += '<h4>✅ Strengths <span class="stat-badge" style="background: #28a745;">' + analysis.strengths.length + '</span></h4>';
+        html += '<ul class="good-list">';
+        analysis.strengths.forEach(s => {
+          html += `<li>${escapeHtml(s)}</li>`;
+        });
+        html += '</ul></div>';
+      }
+
+      // Suggestions section
+      if (analysis.suggestions && analysis.suggestions.length > 0) {
+        html += '<div class="analysis-card">';
+        html += '<h4>💡 Suggestions</h4>';
+        html += '<ul class="suggestions-list">';
+        analysis.suggestions.forEach(s => {
+          html += `<li>${escapeHtml(s)}</li>`;
+        });
+        html += '</ul></div>';
+      }
+
+      html += '</div>';
+      container.innerHTML = html;
+      container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ========== TAB MANAGEMENT ==========
     function setupTabs() {
       const tabs = document.querySelectorAll('.tab');
       tabs.forEach(tab => {
@@ -816,6 +981,7 @@
       document.getElementById(tabName + '-tab').classList.add('active');
     }
 
+    // ========== BUTTON SETUP ==========
     function setupButtons() {
       document.getElementById('parse-button').addEventListener('click', parseGuidelines);
       document.getElementById('analyze-button').addEventListener('click', analyzeSelection);
@@ -826,6 +992,7 @@
       });
     }
 
+    // ========== DRAG AND DROP ==========
     function setupDragAndDrop() {
       const dropZone = document.getElementById('drop-zone');
       ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -867,6 +1034,7 @@
       }
     }
 
+    // ========== FILE HANDLING (UPDATED) ==========
     async function handleFile(file) {
       const maxSize = 50 * 1024 * 1024;
       const allowedTypes = ['.txt', '.pdf'];
@@ -883,15 +1051,28 @@
       }
 
       uploadedFile = file;
+      uploadedPDFName = file.name; // NEW: Store filename
       showMessage('Processing file...', 'info');
 
       try {
         if (fileExt === '.pdf') {
+          // Extract text for parsing
           uploadedFileContent = await extractTextFromPDF(file);
+          
+          // NEW: ALSO store the PDF as base64 for sending to AI
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const base64 = e.target.result.split(',')[1];
+            uploadedPDFBase64 = base64;
+            console.log('✅ PDF stored as base64, length:', base64.length);
+          };
+          reader.readAsDataURL(file);
+          
           if (!uploadedFileContent || uploadedFileContent.trim().length === 0) {
             showMessage('Could not extract text from PDF. The PDF might be image-based or empty.', 'error');
             uploadedFile = null;
             uploadedFileContent = null;
+            uploadedPDFBase64 = null;
             return;
           }
         } else {
@@ -906,6 +1087,7 @@
         showMessage('Error reading file: ' + error.message, 'error');
         uploadedFile = null;
         uploadedFileContent = null;
+        uploadedPDFBase64 = null;
       }
     }
 
@@ -962,6 +1144,8 @@
     function removeFile() {
       uploadedFile = null;
       uploadedFileContent = null;
+      uploadedPDFBase64 = null;
+      uploadedPDFName = null;
       pdfImages = [];
       document.getElementById('uploaded-file-display').innerHTML = '';
       document.getElementById('file-input').value = '';
@@ -969,6 +1153,7 @@
       document.getElementById('guidelines-preview-section').style.display = 'none';
     }
 
+    // ========== PROGRESS ==========
     function updateProgress(percent, text) {
       document.getElementById('parse-progress').style.display = 'block';
       document.getElementById('progress-fill').style.width = percent + '%';
@@ -980,6 +1165,7 @@
       document.getElementById('progress-fill').style.width = '0%';
     }
 
+    // ========== PARSE GUIDELINES ==========
     async function parseGuidelines() {
       if (!uploadedFileContent) {
         showMessage('Please upload a file first.', 'error');
@@ -1092,6 +1278,7 @@
       }, '*');
     }
 
+    // ========== DISPLAY GUIDELINES PREVIEW ==========
     function displayGuidelinesPreview(guidelines) {
       const preview = document.getElementById('guidelines-preview-content');
       const section = document.getElementById('guidelines-preview-section');
@@ -1130,12 +1317,23 @@
       section.style.display = 'block';
     }
 
+    // ========== ANALYZE SELECTION ==========
     function analyzeSelection() {
+      if (!parsedGuidelines) {
+        showMessage('Please upload and parse brand guidelines first', 'error');
+        return;
+      }
+      
+      const btn = document.getElementById('analyze-button');
+      btn.disabled = true;
+      btn.innerHTML = '🔍 Analyzing... <span class="loading-spinner"></span>';
+      
       parent.postMessage({ 
         pluginMessage: { type: 'analyze-selection' } 
       }, '*');
     }
 
+    // ========== COMPLIANCE GRADE ==========
     async function generateComplianceGrade() {
       if (!parsedGuidelines) {
         showMessage('Please upload and parse brand guidelines first', 'error');
@@ -1214,6 +1412,7 @@
       }
     }
 
+    // ========== DISPLAY COMPLIANCE GRADE ==========
     function displayComplianceGrade(report, frameData) {
       const resultsDiv = document.getElementById('grade-results');
       
@@ -1335,6 +1534,7 @@
       resultsDiv.scrollIntoView({ behavior: 'smooth' });
     }
 
+    // ========== DISPLAY ANALYSIS (OLD FALLBACK) ==========
     function displayAnalysis(analysis) {
       const container = document.getElementById('analysis-results');
       
@@ -1391,24 +1591,7 @@
       container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    function enableChat() {
-      document.getElementById('chat-input').disabled = false;
-      document.getElementById('send-chat-btn').disabled = false;
-    }
-
-    function showMessage(text, type) {
-      const messageDiv = document.getElementById('message');
-      messageDiv.className = `message ${type}`;
-      messageDiv.textContent = text;
-      messageDiv.style.display = 'block';
-      
-      if (type !== 'info') {
-        setTimeout(() => {
-          messageDiv.style.display = 'none';
-        }, 4000);
-      }
-    }
-
+    // ========== CHAT FUNCTIONS ==========
     function enableChat() {
       const welcome = document.getElementById('chat-welcome');
       if (welcome) {
@@ -1450,7 +1633,6 @@
       // Check if guidelines are loaded
       if (!parsedGuidelines) {
         console.log('❌ No guidelines loaded');
-        console.log('parsedGuidelines:', parsedGuidelines);
         addChatMessage('system', 'Please upload brand guidelines with AI analysis enabled first (in the Upload Guidelines tab).');
         return;
       }
@@ -1473,7 +1655,8 @@
       addChatMessage('ai', '⏳ Thinking...', loadingId);
       
       try {
-        const response = await chatWithAI(message, apiKey);
+        // NEW: Pass PDF data to chat function
+        const response = await chatWithAI(message, apiKey, uploadedPDFBase64, uploadedPDFName);
         
         const loadingMsg = document.getElementById(loadingId);
         if (loadingMsg) loadingMsg.remove();
@@ -1531,7 +1714,8 @@
       }
     }
 
-    async function chatWithAI(userMessage, apiKey) {
+    // ========== CHAT WITH AI (UPDATED) ==========
+    async function chatWithAI(userMessage, apiKey, pdfBase64, pdfName) {
       let endpoint = document.getElementById('api-endpoint-input').value.trim();
       
       if (!endpoint || endpoint === 'https://your-backend.vercel.app' || endpoint.includes('YOUR-API-URL')) {
@@ -1547,7 +1731,7 @@
       // Build context with safe checks
       const aiData = parsedGuidelines?.aiUnderstanding || {};
       
-      let contextPrompt = `You are an expert brand design consultant. The user is asking you about their brand guidelines.
+      let contextPrompt = `You are an expert brand design consultant. The user is asking you about their brand guidelines${pdfName ? ' from the uploaded PDF "' + pdfName + '"' : ''}.
 
 BRAND INFORMATION:
 Brand Essence: "${aiData.brandEssence || 'Not specified'}"
@@ -1570,6 +1754,8 @@ Provide helpful, specific advice that references the brand. Be conversational an
         content: contextPrompt
       });
 
+      console.log('💬 Sending chat request with PDF:', !!pdfBase64);
+
       const response = await fetch(`${endpoint}/api/chat`, {
         method: 'POST',
         headers: {
@@ -1577,7 +1763,10 @@ Provide helpful, specific advice that references the brand. Be conversational an
         },
         body: JSON.stringify({
           messages: messages,
-          apiKey: apiKey
+          apiKey: apiKey,
+          pdfBase64: pdfBase64,        // NEW: Include PDF
+          pdfName: pdfName,             // NEW: Include filename
+          guidelinesContext: aiData     // NEW: Include AI understanding
         })
       });
 
@@ -1593,6 +1782,20 @@ Provide helpful, specific advice that references the brand. Be conversational an
       }
 
       return data.data;
+    }
+
+    // ========== UTILITY FUNCTIONS ==========
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.className = `message ${type}`;
+      messageDiv.textContent = text;
+      messageDiv.style.display = 'block';
+      
+      if (type !== 'info') {
+        setTimeout(() => {
+          messageDiv.style.display = 'none';
+        }, 4000);
+      }
     }
 
     function escapeHtml(text) {

@@ -293,7 +293,9 @@ figma.ui.onmessage = async (msg) => {
           frameImages.push({
             name: node.name,
             type: node.type,
-            base64: base64
+            base64: base64,
+            width: node.width,
+            height: node.height
           });
           
           console.log('✅ Exported:', node.name);
@@ -304,20 +306,12 @@ figma.ui.onmessage = async (msg) => {
 
       console.log(`✅ Exported ${frameImages.length} frames`);
 
-      let analysis;
-      
-      if (selection.length > 1) {
-        analysis = analyzeMultipleElements(selection, brandGuidelines);
-      } else {
-        analysis = analyzeElement(selection[0], brandGuidelines);
-      }
-      
-      // Add image data to analysis
-      analysis.frameImages = frameImages;
-      
+      // Send complete data to UI for AI analysis
       figma.ui.postMessage({ 
-        type: 'analysis-complete', 
-        analysis: analysis 
+        type: 'analysis-ready-for-ai',
+        frameImages: frameImages,
+        guidelines: brandGuidelines,
+        selectionCount: selection.length
       });
       
     } catch (error) {
