@@ -16,8 +16,10 @@ export default async function handler(req, res) {
   // Normalize path - remove query string and handle both /api/* and /* paths
   let path = req.url.split('?')[0];
 
+  console.log('📍 Request:', req.method, path);
+
   // ===== HEALTH CHECK =====
-  if (req.method === 'GET' && (path === '/' || path === '/api')) {
+  if (req.method === 'GET' && (path === '/' || path === '/api' || path === '/api/')) {
     res.status(200).json({ 
       status: 'API Running',
       endpoints: [
@@ -306,5 +308,6 @@ Provide JSON: {
   }
 
   // 404
-  res.status(404).json({ error: 'Not found' });
+  console.log('❌ 404 - No route matched for:', req.method, path);
+  res.status(404).json({ error: 'Not found', path: path, method: req.method });
 }
