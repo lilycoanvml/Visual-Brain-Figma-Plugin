@@ -276,7 +276,7 @@ Respond ONLY with JSON array: [{category, check, severity, reason}, ...]`
   }
 });
 
-// Chat with PDF context
+// Chat with optional PDF context
 app.post('/api/chat', async (req, res) => {
   try {
     console.log('💬 Chat request');
@@ -291,21 +291,25 @@ app.post('/api/chat', async (req, res) => {
     // Build message content
     const messageContent = [];
     
-    // Add PDF document if provided
+    // Add PDF document if provided (optional - may be too large)
     if (pdfBase64 && pdfName) {
-      messageContent.push({
-        type: 'document',
-        source: {
-          type: 'base64',
-          media_type: 'application/pdf',
-          data: pdfBase64
-        }
-      });
-      messageContent.push({
-        type: 'text',
-        text: `I've uploaded the brand guidelines PDF: "${pdfName}". Please reference this document when answering questions.`
-      });
-      console.log('📄 PDF included in chat:', pdfName);
+      try {
+        messageContent.push({
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: pdfBase64
+          }
+        });
+        messageContent.push({
+          type: 'text',
+          text: `I've uploaded the brand guidelines PDF: "${pdfName}". Please reference this document when answering questions.`
+        });
+        console.log('📄 PDF included in chat:', pdfName);
+      } catch (e) {
+        console.log('⚠️ Could not include PDF (might be too large):', e.message);
+      }
     }
     
     // Add the conversation messages
@@ -321,10 +325,16 @@ app.post('/api/chat', async (req, res) => {
     
     // Prepare conversation history
     const conversationMessages = messages.slice(0, -1);
-    conversationMessages.push({
-      role: 'user',
-      content: messageContent
-    });
+    
+    // If we have content to add, update last message
+    if (messageContent.length > 0) {
+      conversationMessages.push({
+        role: 'user',
+        content: messageContent
+      });
+    } else {
+      conversationMessages.push(lastMessage);
+    }
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',

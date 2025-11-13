@@ -1731,18 +1731,23 @@
       // Build context with safe checks
       const aiData = parsedGuidelines?.aiUnderstanding || {};
       
-      let contextPrompt = `You are an expert brand design consultant. The user is asking you about their brand guidelines${pdfName ? ' from the uploaded PDF "' + pdfName + '"' : ''}.
+      // Include PDF info in prompt, but DON'T send the actual PDF (too large)
+      let contextPrompt = `You are an expert brand design consultant. The user is asking you about their brand guidelines${pdfName ? ' from their uploaded document "' + pdfName + '"' : ''}.
 
-BRAND INFORMATION:
+BRAND INFORMATION (extracted from their guidelines):
 Brand Essence: "${aiData.brandEssence || 'Not specified'}"
 Brand Personality: ${aiData.brandPersonality || 'Not specified'}
 Visual Style: ${aiData.visualStyle || 'Not specified'}
 Target Audience: ${aiData.targetAudience || 'Not specified'}
 Core Values: ${aiData.coreValues || 'Not specified'}
+Color Psychology: ${aiData.colorPsychology || 'Not specified'}
+Typography Character: ${aiData.typographyCharacter || 'Not specified'}
+Imagery Style: ${aiData.imageryStyle || 'Not specified'}
+Design Principles: ${aiData.designPrinciples || 'Not specified'}
 
 User's Question: ${userMessage}
 
-Provide helpful, specific advice that references the brand. Be conversational and professional.`;
+Provide helpful, specific advice that references their brand guidelines. Be conversational and professional. Answer based on the brand information above.`;
 
       const messages = chatHistory.slice(-10).map(msg => ({
         role: msg.role,
@@ -1754,7 +1759,7 @@ Provide helpful, specific advice that references the brand. Be conversational an
         content: contextPrompt
       });
 
-      console.log('💬 Sending chat request with PDF:', !!pdfBase64);
+      console.log('💬 Sending chat request (using extracted brand data, not PDF)');
 
       const response = await fetch(`${endpoint}/api/chat`, {
         method: 'POST',
@@ -1764,9 +1769,8 @@ Provide helpful, specific advice that references the brand. Be conversational an
         body: JSON.stringify({
           messages: messages,
           apiKey: apiKey,
-          pdfBase64: pdfBase64,        // NEW: Include PDF
-          pdfName: pdfName,             // NEW: Include filename
-          guidelinesContext: aiData     // NEW: Include AI understanding
+          // NOTE: Not sending pdfBase64 - too large!
+          guidelinesContext: aiData
         })
       });
 
